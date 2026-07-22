@@ -1,0 +1,5 @@
+# 此目录存放音频文件，详见 ../README.md
+# 需要放入以下文件才能启用音效（缺失时游戏静默运行）：
+# BGM: bgm_home.mp3, bgm_game.mp3, bgm_level.mp3
+# SFX: sfx_click.mp3, sfx_match.mp3, sfx_combo.mp3, sfx_fail.mp3, sfx_win.mp3
+#      sfx_prop_undo.mp3, sfx_prop_shuffle.mp3, sfx_prop_hint.mp3

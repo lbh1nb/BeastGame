@@ -1,0 +1,32 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": [
+    "src/renderer/src/**/*",
+    "src/renderer/src/**/*.vue",
+    "src/game/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "strict": true,
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "types": ["node", "howler"],
+    "baseUrl": ".",
+    "paths": {
+      "@renderer/*": ["src/renderer/src/*"],
+      "@game/*": ["src/game/*"],
+      "@components/*": ["src/renderer/src/components/*"],
+      "@views/*": ["src/renderer/src/views/*"],
+      "@stores/*": ["src/renderer/src/stores/*"],
+      "@utils/*": ["src/renderer/src/utils/*"],
+      "@audio/*": ["src/renderer/src/audio/*"],
+      "@assets/*": ["src/renderer/src/assets/*"]
+    }
+  },
+  "vueCompilerOptions": {
+    "plugins": []
+  }
+}

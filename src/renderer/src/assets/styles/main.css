@@ -1,0 +1,125 @@
+/* ===== 兽了个兽 全局样式 ===== */
+
+:root {
+  /* 主题色 - Q萌卡通橙黄系 */
+  --color-primary: #ffb84d;
+  --color-primary-dark: #f59e0b;
+  --color-secondary: #6dd5b3;
+  --color-accent: #ff6b9d;
+  --color-bg: #fff5e1;
+  --color-bg-card: #ffffff;
+  --color-text: #4a3c2e;
+  --color-text-light: #8a7866;
+  --color-border: #ffe0b3;
+  --color-success: #4ade80;
+  --color-danger: #ef4444;
+  --color-warning: #fbbf24;
+
+  --shadow-card: 0 4px 12px rgba(255, 165, 0, 0.15);
+  --shadow-button: 0 3px 0 var(--color-primary-dark);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --font-base: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+/* 通用按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+
+  &--primary {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: var(--shadow-button);
+
+    &:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 var(--color-primary-dark);
+    }
+  }
+
+  &--secondary {
+    background: var(--color-secondary);
+    color: #fff;
+  }
+
+  &--ghost {
+    background: transparent;
+    color: var(--color-text);
+    border: 2px solid var(--color-border);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* 通用卡片 */
+.card {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}

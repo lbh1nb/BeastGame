@@ -1,0 +1,33 @@
+{
+  "appId": "com.beastgame.app",
+  "productName": "BeastGame",
+  "directories": {
+    "output": "release",
+    "buildResources": "resources"
+  },
+  "files": [
+    "out/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+      "to": "native/better_sqlite3.node"
+    },
+    {
+      "from": "resources",
+      "to": ".",
+      "filter": ["**/*"]
+    }
+  ],
+  "asar": true,
+  "win": {
+    "target": [
+      {
+        "target": "dir",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "resources/icon.png",
+    "signAndEditExecutable": false
+  }
+}
