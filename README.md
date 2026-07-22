@@ -25,10 +25,14 @@
 
 ### 玩家使用（解压即玩）
 
-1. 获取打包好的 `BeastGame-x.x.x-win-x64.zip`
+**下载地址**：[GitHub Release v1.0.0](https://github.com/lbh1nb/BeastGame/releases/tag/v1.0.0)
+
+1. 点击上方链接，下载 `BeastGame-portable.zip`（约 129MB）
 2. 解压到任意目录
 3. 双击 `BeastGame.exe` 即可运行
 
+> **无需安装任何依赖、无需配置环境变量、无需 Node.js**
+>
 > 存档位置：`%APPDATA%\BeastGame\data.db`（删除游戏文件夹不影响存档）
 
 ### 开发者指南
