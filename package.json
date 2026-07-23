@@ -1,6 +1,6 @@
 {
   "name": "beast-game",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "兽了个兽 - 一款Q萌卡通风格的消除类桌面小游戏",
   "main": "./out/main/index.js",
   "author": "beast-game",

@@ -25,7 +25,7 @@
 
 ### 玩家使用（解压即玩）
 
-**下载地址**：[GitHub Release v1.0.0](https://github.com/lbh1nb/BeastGame/releases/tag/v1.0.0)
+**下载地址**：[GitHub Release v1.1.0](https://github.com/lbh1nb/BeastGame/releases/tag/v1.1.0)
 
 1. 点击上方链接，下载 `BeastGame-portable.zip`（约 120MB）
 2. 解压到任意目录
