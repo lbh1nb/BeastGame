@@ -76,12 +76,12 @@ const dragging = ref(false)
 let lastX = 0
 let lastY = 0
 
-/** 6 章节在地球上的经纬度位置 + 场景主题 */
+/** 6 章节在地球上的经纬度位置 + 场景主题（与 levels.config 章节对应） */
 const chapterLocations = [
   { chapter: 1, lon: 30, lat: 40, name: '家畜', emoji: '🏠', theme: 'farm' },
-  { chapter: 2, lon: -90, lat: 35, name: '宠物', emoji: '🐾', theme: 'pet' },
-  { chapter: 3, lon: 120, lat: -10, name: '小动物', emoji: '🌳', theme: 'small' },
-  { chapter: 4, lon: 20, lat: -20, name: '野生', emoji: '🌿', theme: 'wild' },
+  { chapter: 2, lon: -90, lat: 35, name: '野生', emoji: '🌿', theme: 'wild' },
+  { chapter: 3, lon: 120, lat: -10, name: '森林', emoji: '🌳', theme: 'forest' },
+  { chapter: 4, lon: 20, lat: -20, name: '鸟类', emoji: '🪶', theme: 'bird' },
   { chapter: 5, lon: -150, lat: 0, name: '海洋', emoji: '🌊', theme: 'ocean' },
   { chapter: 6, lon: 70, lat: 60, name: '综合', emoji: '⛰️', theme: 'mix' }
 ]
@@ -374,7 +374,7 @@ function drawSceneWithAnimals(
   for (let i = 0; i < Math.min(2, animals.length); i++) {
     const ax = x - radius * 0.42 + i * radius * 0.84 - drawSize / 2
     const ay = y + radius * 0.2 - drawSize / 2
-    drawAnimal(ctx, animals[i], (i % 2) as 0 | 1, 'idle', scale, ax, ay)
+    drawAnimal(ctx, animals[i], 'idle', scale, ax, ay)
   }
 
   ctx.restore()
@@ -388,9 +388,9 @@ function drawSceneBackground(
 ): void {
   const themeColors: Record<string, string> = {
     farm: 'rgba(124, 179, 66, 0.35)',
-    pet: 'rgba(255, 182, 193, 0.4)',
-    small: 'rgba(85, 139, 47, 0.35)',
+    forest: 'rgba(85, 139, 47, 0.35)',
     wild: 'rgba(109, 76, 65, 0.4)',
+    bird: 'rgba(255, 182, 193, 0.4)',
     ocean: 'rgba(25, 118, 210, 0.25)',
     mix: 'rgba(94, 53, 177, 0.35)'
   }
@@ -444,45 +444,49 @@ function drawSceneDecor(
       ctx.fillRect(x + radius * 0.3, y - radius * 0.1, radius * 0.32, radius * 0.04)
       break
     }
-    case 'pet': {
-      // 宠物窝：圆顶小屋 + 玩具球 + 骨头
-      const bx = x - radius * 0.35
-      const by = y - radius * 0.25
-      // 窝顶（半圆）
-      ctx.fillStyle = '#ad1457'
+    case 'bird': {
+      // 鸟类：鸟巢 + 鸟蛋 + 羽毛
+      const nx = x - radius * 0.1
+      const ny = y - radius * 0.05
+      // 鸟巢（碗形）
+      ctx.fillStyle = '#6d4c41'
       ctx.beginPath()
-      ctx.arc(bx, by, radius * 0.28, Math.PI, 0)
+      ctx.arc(nx, ny, radius * 0.32, 0, Math.PI)
       ctx.fill()
-      // 窝身
-      ctx.fillStyle = '#ec407a'
-      ctx.fillRect(bx - radius * 0.28, by, radius * 0.56, radius * 0.2)
-      // 窝门
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      ctx.arc(bx, by + radius * 0.1, radius * 0.1, 0, Math.PI * 2)
-      ctx.fill()
-      // 玩具球（右上）
-      ctx.fillStyle = '#ff7043'
-      ctx.beginPath()
-      ctx.arc(x + radius * 0.4, y - radius * 0.35, radius * 0.12, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.strokeStyle = '#bf360c'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.arc(x + radius * 0.4, y - radius * 0.35, radius * 0.12, 0, Math.PI * 2)
-      ctx.stroke()
-      // 骨头（右下小）
+      // 鸟巢纹理（横向编织线）
+      ctx.strokeStyle = '#4e342e'
+      ctx.lineWidth = 1.2
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath()
+        ctx.arc(nx, ny, radius * (0.2 + i * 0.06), 0, Math.PI)
+        ctx.stroke()
+      }
+      // 鸟蛋（3颗白色椭圆）
       ctx.fillStyle = '#fffde7'
-      ctx.fillRect(x + radius * 0.25, y - radius * 0.05, radius * 0.2, radius * 0.05)
       ctx.beginPath()
-      ctx.arc(x + radius * 0.23, y - radius * 0.03, radius * 0.05, 0, Math.PI * 2)
-      ctx.arc(x + radius * 0.23, y + radius * 0.02, radius * 0.05, 0, Math.PI * 2)
-      ctx.arc(x + radius * 0.47, y - radius * 0.03, radius * 0.05, 0, Math.PI * 2)
-      ctx.arc(x + radius * 0.47, y + radius * 0.02, radius * 0.05, 0, Math.PI * 2)
+      ctx.ellipse(nx - radius * 0.12, ny - radius * 0.02, radius * 0.07, radius * 0.1, -0.3, 0, Math.PI * 2)
       ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(nx + radius * 0.05, ny - radius * 0.05, radius * 0.07, radius * 0.1, 0.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(nx + radius * 0.18, ny - radius * 0.02, radius * 0.06, radius * 0.09, 0.4, 0, Math.PI * 2)
+      ctx.fill()
+      // 羽毛（右上，彩色斜线）
+      ctx.strokeStyle = '#ec407a'
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.moveTo(x + radius * 0.35, y - radius * 0.1)
+      ctx.lineTo(x + radius * 0.5, y - radius * 0.4)
+      ctx.stroke()
+      ctx.strokeStyle = '#42a5f5'
+      ctx.beginPath()
+      ctx.moveTo(x + radius * 0.42, y - radius * 0.08)
+      ctx.lineTo(x + radius * 0.55, y - radius * 0.32)
+      ctx.stroke()
       break
     }
-    case 'small': {
+    case 'forest': {
       // 森林：两棵多层树 + 草丛
       // 左树
       drawTree(ctx, x - radius * 0.38, y - radius * 0.15, radius * 0.22)

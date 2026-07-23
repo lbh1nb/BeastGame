@@ -1,23 +1,24 @@
 /**
- * 像素风 Q 萌动物绘制系统（24×24 版）
- * 纯逻辑层，用 Canvas API 程序化绘制 12 种动物
+ * 像素风 Q 萌动物绘制系统（32×32 扁平方块版）
+ * 纯逻辑层，用 Canvas API 程序化绘制 20 种动物
  *
- * v3 改动：
- *  - 16×16 → 24×24 像素网格，细节更丰富
- *  - 每种动物有独特体型轮廓（圆/方/椭圆/流线/S形等）
- *  - 每种动物有独特配色+纹理（条纹/斑点/渐变/双色等）
- *  - variant 1：戴小帽子
+ * v4 改动：
+ *  - 24×24 → 32×32 像素网格，体型更大、特征更突出
+ *  - 12 种 → 20 种动物，主色均匀分布色环，相邻色相差≥30°
+ *  - 去掉 variant（戴帽子）变体，每种动物唯一模型
+ *  - 扁平方块风格：去掉圆形描边 'O'，纯色块填充
+ *  - 每种动物有独特体型轮廓 + 独特识别特征，保证一眼可辨
  *
  * 像素字符含义：
  *  '.' 透明
  *  'K' 黑  'W' 白  'M' 主色  'S' 次色(暗)  'L' 次色(亮)
- *  'P' 粉色  'E' 眼睛  'B' 嘴  'O' 描边  'N' 鼻
- *  'T' 纹理色(条纹/斑点)  'C' 装饰色(项圈/蝴蝶结)  'H' 喷水/高光
+ *  'P' 粉色  'E' 眼睛  'B' 嘴红  'N' 嘴橙  'T' 纹理色
+ *  'C' 装饰色(项圈/羽冠)  'H' 喷水/高光
  */
 import type { AnimalType } from '@game/types'
 
 /** 像素尺寸 */
-export const PIXEL_SIZE = 24
+export const PIXEL_SIZE = 32
 
 /** 调色板：字符 -> 颜色 */
 export interface Palette {
@@ -29,7 +30,6 @@ export interface Palette {
   P: string
   E: string
   B: string
-  O: string
   N: string
   T: string
   C: string
@@ -52,241 +52,204 @@ const BASE: Palette = {
   P: '#ffb3c1',
   E: '#1a1a1a',
   B: '#c0392b',
-  O: '#0a0a0a',
-  N: '#e74c3c',
+  N: '#ff6f00',
   T: '#000000',
   C: '#e91e63',
   H: '#81d4fa'
 }
 
-/** 12 种动物的像素图（24×24）- 独特体型+独特配色纹理 */
+/**
+ * 20 种动物的像素图（32×32 扁平方块）
+ * 按章节分组，主色均匀分布色环
+ */
 const SPRITES: Record<AnimalType, AnimalSprite> = {
-  // 绵羊：圆形蓬松白色身体 + 卷毛纹理 + 黑脸
+  // ============ 第1章 家畜 ============
+
+  // 绵羊：蓬松米白羊毛团 + 黑脸 + 黑耳
   sheep: {
     palette: {
       ...BASE,
-      M: '#f5f0e8',  // 蓬松毛色
-      S: '#d4cfc5',  // 阴影
-      L: '#fffaf0',  // 亮部
+      M: '#f5f0e8',  // 蓬松毛色（米白）
+      S: '#d4cfc5',  // 毛阴影
+      L: '#fffaf0',  // 毛亮部
       T: '#c8b896',  // 卷毛纹理点
-      K: '#2c2c2c'   // 脸部黑
+      K: '#2c2c2c'   // 脸黑
     },
     pixels: [
-      '........................',
-      '.....OO..........OO.....',
-      '....OMMMO........OMMMO..',
-      '...OMTLTMO......OMTLTMO.',
-      '..OMTLTLTMO....OMTLTLTMO',
-      '..OMTLTLTLMO..OMTLTLTLMO',
-      '.OMTLTLTLTLMOOOMTLTLTLMO',
-      '.OMTLTLTLTLTLWTLTLTLTLMO',
-      '.OMTLTLTLTLTLWTLTLTLTLMO',
-      '.OMTLTLKKKLTLWTLTLTLTLMO',
-      '.OMTLTLKEEKLTLWTLTLTLTMO',
-      '.OMTLTLKEEKLTLWTLTLTLTMO',
-      '.OMTLKLKNKKLTLWTLTLTLMO.',
-      '..OMTLKLLKLTLWTLTLTLMO..',
-      '..OMTLTLTLTLWTLTLTLTMO..',
-      '...OMTLTLTLTLWTLTLTMO...',
-      '....OMTLTLTLTLWTLTMO....',
-      '.....OMTLTLTLTLWTMO.....',
-      '......OMTLTLTLTMO.......',
-      '.......OOMMMMOO........',
-      '........KOOOK..........',
-      '........KOOOK..........',
-      '........KKOKK..........',
-      '........................'
+      '................................',
+      '................................',
+      '.......MM..............MM.......',
+      '......MMLM............MMLM......',
+      '.....MMLTLM..........MMLTLM.....',
+      '....MMLTLTLM........MMLTLTLM....',
+      '....MMLTLTLM........MMLTLTLM....',
+      '...MMLTLTLTLM......MMLTLTLTLM...',
+      '..MMLTLTLTLTLM....MMLTLTLTLTLM..',
+      '..MMLTLTLTLTLM....MMLTLTLTLTLM..',
+      '.MMLTLTLTLTLTLM..MMLTLTLTLTLTLM.',
+      '.MMLTLTLTLTLTLLLLLTLTLTLTLTLTLM.',
+      'MMLTLTLTLTLTLTLWTLTLTLTLTLTLTLM.',
+      'MMLTLTLKKKLTLTLWTLTLTLTLTLTLTLM.',
+      '.MMLTLTLKEEKLTLTLWTLTLTLTLTLTLM.',
+      '.MMLTLTLKEEKLTLTLWTLTLTLTLTLTLM.',
+      '.MMLTLKLKNKKLTLTLWTLTLTLTLTLTLM.',
+      '.MMLTKLLKLTLTLTLWTLTLTLTLTLTLM..',
+      '.MMLTLTLTLTLTLTLWTLTLTLTLTLTLM..',
+      '..MMLTLTLTLTLTLTLWTLTLTLTLTLM...',
+      '..MMLTLTLTLTLTLTLWTLTLTLTLTLM...',
+      '...MMLTLTLTLTLTLTLWTLTLTLTLM....',
+      '....MMLTLTLTLTLTLTLWTLTLTLM.....',
+      '.....MMLTLTLTLTLTLTLWTLTLM......',
+      '......MMLTLTLTLTLTLTLWTLM.......',
+      '.......MMLTLTLTLTLTLTWLM........',
+      '........MMLTLTLTLTLTWLM.........',
+      '.........MMLTLTLTLTWLM..........',
+      '..........MMLTLTLTWLM...........',
+      '...........MMLTLTWLM............',
+      '............MMLTWLM.............',
+      '.............MMMMLM.............',
     ]
   },
 
-  // 小鸡：圆胖黄色 + 橙色尖嘴 + 三角冠
+  // 小猪：粉色胖身 + 大鼻孔 + 三角耳 + 卷尾
+  pig: {
+    palette: {
+      ...BASE,
+      M: '#f48fb1',  // 主粉
+      S: '#ec6090',  // 暗粉
+      L: '#ffc1d4',  // 亮粉
+      K: '#1a1a1a',  // 鼻孔黑
+      P: '#ff8a80'   // 鼻头粉红
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '...MM......................MM...',
+      '..MLLM....................MLLM..',
+      '..MLLM....................MLLM..',
+      '..MLLM....................MLLM..',
+      '..MLLLLM..MMMMMMMMMMMM..MLLLLM..',
+      'MLLLLLLMMMMLLLLLLLLLLMMMMLLLLLM.',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLLLEELLLLLLLLLLLLLLLLLLEELLLLM',
+      'MLLLLEELLLLLLLLLLLLLLLLLLEELLLLM',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLLLLLLLPPPPPPPPPPPLLLLLLLLLLM.',
+      'MLLLLLLLPPKKPPPPKKPPPLLLLLLLLLM.',
+      '.MLLLLLLPPKKPPPPKKPPPLLLLLLLLLM.',
+      '.MLLLLLLPPPPPPPPPPPPLLLLLLLLLM..',
+      '..MLLLLLLLLLLLLLLLLLLLLLLLLLLM..',
+      '...MLLLLLLLLLLLLLLLLLLLLLLLLM...',
+      '...MLLLLLLLLLLLLLLLLLLLLLLLLM...',
+      '....MLLLLLLLLLLLLLLLLLLLLLLM....',
+      '.....MLLLLLLLLLLLLLLLLLLLLM.....',
+      '......MLLLLLLLLLLLLLLLLLLM......',
+      '.......MLLLLLLLLLLLLLLLLM.......',
+      '........MLLLLLLLLLLLLLLM........',
+      '.........MLLLLLLLLLLLLM.........',
+      '..........MLLLLLLLLLLM..........',
+      '...........MLLLLLLLLM...........',
+      '............MLLLLLLM............',
+      '.............MLLLLM.............',
+      '..............MLLM..............',
+    ]
+  },
+
+  // 小鸡：柠檬黄圆胖身 + 红冠 + 橙尖嘴
   chicken: {
     palette: {
       ...BASE,
-      M: '#ffd54f',  // 主黄
-      S: '#f9a825',  // 暗黄
-      L: '#fff176',  // 亮黄
+      M: '#fff176',  // 主柠檬黄
+      S: '#fdd835',  // 暗黄
+      L: '#ffff9c',  // 亮黄
+      B: '#c0392b',  // 红冠
       N: '#ff6f00'   // 嘴橙
     },
     pixels: [
-      '........................',
-      '.........OO.............',
-      '........ONNO............',
-      '.........OO.............',
-      '.......OOMMO............',
-      '......OMMMMMO...........',
-      '.....OMLMMMMMNO.........',
-      '....OMMMMMMMMMNO........',
-      '...OMLMMMMMMMMMMNO......',
-      '..OMMMMMMMMMMMMMMMNO....',
-      '.OMLMMMMMMMMMMMMMMMNO...',
-      '.OMMMMEEWMMMMMEEWMMMNO..',
-      '.OMMMMMMNMMMMMMNMMMMMNO.',
-      '.OMMMMMMNWMMMMMNWMMMMNO.',
-      '.OMMMMMLLMMMMMLLMMMMNO..',
-      '.OMMMMMMMMMMMMMMMMMMNO..',
-      '..OMMMMMMMMMMMMMMMMNO...',
-      '...OMMMMMMMMMMMMMMNO....',
-      '....OOMMMMMMMMMMMNO.....',
-      '.....NNNN....NNNN.......',
-      '.....NNOO....OONN.......',
-      '.....KOOO....OOOK.......',
-      '......KK......KK........',
-      '........................'
+      '................................',
+      '................................',
+      '...............BB...............',
+      '..............BBBB..............',
+      '..............BBBB..............',
+      '..............BBBB..............',
+      '..............NNNN..............',
+      '............LMMMMML.............',
+      '...........LMMMMMMML............',
+      '..........LMMMMMMMMML...........',
+      '.........LMMMMMMMMMMML..........',
+      '........LMMMMMMMMMMMMML.........',
+      '.......LMMMMMMMMMMMMMMML........',
+      '......LMMMMMMMMMMMMMMMMML.......',
+      '.....LMMMMMMMMMMMMMMMMMMML......',
+      '...LMMMMMMMEELMMMMMEELMMMMML....',
+      '...LMMMMMMMEELMMMMMEELMMMMML....',
+      '...LMMMMMMMMNNLMMMMNNMMMMMML....',
+      '...LMMMMMMMMNNWMMMNNWMMMMMML....',
+      '....LMMMMMMMLLMMMMMLLMMMMMML....',
+      '....LMMMMMMMMMMMMMMMMMMMMMML....',
+      '.....LMMMMMMMMMMMMMMMMMMMML.....',
+      '......LMMMMMMMMMMMMMMMMMML......',
+      '.......LMMMMMMMMMMMMMMMML.......',
+      '........LMMMMMMMMMMMMMML........',
+      '.........LMMMMMMMMMMMML.........',
+      '..........LMMMMMMMMMML..........',
+      '...........LMMMMMMML............',
+      '............LMMMMML.............',
+      '.............NNNNN..............',
+      '.............KKKKK..............',
+      '................................',
     ]
   },
 
-  // 小猫：椭圆橙色 + 竖三角耳 + 条纹 + 长尾
-  cat: {
-    palette: {
-      ...BASE,
-      M: '#ffa726',  // 主橙
-      S: '#ef6c00',  // 暗橙
-      L: '#ffb74d',  // 亮橙
-      T: '#3e2723',  // 条纹黑棕
-      P: '#ff8a80'   // 鼻粉
-    },
-    pixels: [
-      '........................',
-      '...O.O..........O.O.....',
-      '..OTPTO........OTPTO....',
-      '..OTMTO........OTMTO....',
-      '.OTMMMTO......OTMMMTO...',
-      '.OTMMMMMTOOOOTMMMMMTO...',
-      'OTMMMMMMMMMMMMMMMMMMTO..',
-      'OTMLMMMMMMMMMMMMMMMTO...',
-      'OTMMMEEWMMMMMEEWMMMTO...',
-      '.OTMMMMPNPMMMMMMMMTO....',
-      '.OTMMMMMMMMMMMMMMTO.....',
-      '.OTMTMMMMMMMMMMMMTO.....',
-      '.OTMMTMMMMMMMMMMTO......',
-      '.OTMMMTMMMMMMMMTO.......',
-      '..OTMMMTMMMMMMTO........',
-      '..OTMMMMTMMMMTO.........',
-      '...OTMMMMMMTO...........',
-      '....OTMMMMTO............',
-      '.....OTMMTO.............',
-      '......OOTO..............',
-      '.......OO...............',
-      '......KOOOK.............',
-      '......KOOOK.............',
-      '........................'
-    ]
-  },
-
-  // 小狗：方形棕色 + 垂耳 + 黑鼻 + 项圈
+  // 小狗：浅棕方身 + 垂耳 + 黑鼻 + 红项圈
   dog: {
     palette: {
       ...BASE,
-      M: '#b8860b',  // 主棕
-      S: '#8d6e08',  // 暗棕
-      L: '#daa520',  // 亮棕
+      M: '#bcaaa4',  // 主浅棕
+      S: '#8d6e63',  // 暗棕
+      L: '#d7ccc8',  // 亮棕
       C: '#d32f2f',  // 项圈红
-      N: '#1a1a1a'   // 鼻黑
+      K: '#1a1a1a'   // 鼻黑
     },
     pixels: [
-      '........................',
-      '...OOO..........OOO.....',
-      '..OCCCO........OCCCO....',
-      '..OCCCO........OCCCO....',
-      '..OCCCO........OCCCO....',
-      '.OCCCCCOOOOOOOOCCCCCO...',
-      'OCCCCCCCCCCCCCCCCCCCCCO.',
-      'OCCCCCCCCCCCCCCCCCCCCCO.',
-      'OCCMLMMMMMMMMMMMMLMCCO..',
-      'OCCMMMEEWMMMMMEEWMMCCO..',
-      '.OCCMMMMNWMMMMMNWMCCO...',
-      '.OCCMMMMMNWMMMNMMCCO....',
-      '.OCCMMMMMMMMMMMMCCO.....',
-      '.OCCMMMMMMMMMMMCCO......',
-      '..OCCMMMMMMMMMCCO.......',
-      '..OCCMMMMMMMMCCO........',
-      '...OCCMMMMMMCCO.........',
-      '....OCCMMMMCCO..........',
-      '.....OCCMMCCO...........',
-      '......OOOOOO............',
-      '.....KOOOOOOK...........',
-      '.....KOOOOOOK...........',
-      '......KKKKKK............',
-      '........................'
+      '................................',
+      '................................',
+      '...MMM....................MMM...',
+      '..MLLM....................MLLM..',
+      '..MLLM....................MLLM..',
+      '..MLLM....................MLLM..',
+      '.MLLLM....................MLLLM.',
+      'MLLLLLMMMMMMMMMMMMMMMMMMMMMLLLLM',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLMEELLLLLLLLLLLLLLLLLLLLEELLLM',
+      'MLLMEELLLLLLLLLLLLLLLLLLLLEELLLM',
+      'MLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLM',
+      'MLLLLLLLLLLKLLLLLLLLKLLLLLLLLLM.',
+      'MLLLLLLLLLKKKKLLLLKKKKLLLLLLLLM.',
+      'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC.',
+      'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC.',
+      '.MLLLLLLLLLLLLLLLLLLLLLLLLLLLM..',
+      '.MLLLLLLLLLLLLLLLLLLLLLLLLLLLM..',
+      '..MLLLLLLLLLLLLLLLLLLLLLLLLLLM..',
+      '..MLLLLLLLLLLLLLLLLLLLLLLLLLLM..',
+      '...MLLLLLLLLLLLLLLLLLLLLLLLLM...',
+      '....MLLLLLLLLLLLLLLLLLLLLLLM....',
+      '.....MLLLLLLLLLLLLLLLLLLLLM.....',
+      '......MLLLLLLLLLLLLLLLLLLM......',
+      '.......MLLLLLLLLLLLLLLLLM.......',
+      '........MLLLLLLLLLLLLLLM........',
+      '.........MLLLLLLLLLLLLM.........',
+      '..........MLLLLLLLLLLM..........',
+      '...........MLLLLLLLLM...........',
+      '............MLLLLLLM............',
+      '.............MLLLLM.............',
     ]
   },
 
-  // 兔子：高个白色 + 超长耳 + 粉鼻 + 圆球尾
-  rabbit: {
-    palette: {
-      ...BASE,
-      M: '#f5f5f5',  // 主白
-      S: '#e0e0e0',  // 阴影
-      L: '#ffffff',  // 亮白
-      P: '#ffb3c1',  // 鼻粉
-      T: '#e0e0e0'   // 耳内粉
-    },
-    pixels: [
-      '....O....O..............',
-      '...OPO..OPO.............',
-      '...OPO..OPO.............',
-      '...OPO..OPO.............',
-      '...OPO..OPO.............',
-      '...OPO..OPO.............',
-      '....OOOOOO..............',
-      '...OOMMMMMNO............',
-      '..OMMMMMMMMMNO..........',
-      '.OMLMMMMMMMMMNO.........',
-      '.OMMMMMMMMMMMMNO........',
-      '.OMMEEWMMMMMEEWNO.......',
-      '.OMMMMPPMMMMMMMNO.......',
-      '.OMMMMMMMMMMMMMNO.......',
-      '.OMLMMMMMMMMMMMNO.......',
-      '.OMMMMMMMMMMMMMNO.......',
-      '..OMMMMMMMMMMMNO........',
-      '...OMMMMMMMMMNO.........',
-      '....OMMMMMMMNO..........',
-      '....OOWWWWWOO...........',
-      '.....OWWWWWO............',
-      '.....KOOOOOK............',
-      '.....KOOOOOK............',
-      '........................'
-    ]
-  },
-
-  // 仓鼠：短胖橙白色 + 圆耳 + 大颊囊
-  hamster: {
-    palette: {
-      ...BASE,
-      M: '#ffcc80',  // 主橙
-      S: '#ffa000',  // 暗橙
-      L: '#ffe0b2',  // 亮橙
-      W: '#ffffff',  // 肚白
-      P: '#ff8a80'   // 鼻粉
-    },
-    pixels: [
-      '........................',
-      '.....OO......OO.........',
-      '....OPPO....OPPO........',
-      '...OPPPPO..OPPPPO.......',
-      '..OPPPPPPOOPPPPPPO......',
-      '..OPPPPPPPPPPPPPPO......',
-      '.OPPPPPPPPPPPPPPPPO.....',
-      'OPPPMLPPPPPPPPPLMPPPO...',
-      'OPPPMMLPPPPPPPLMMPPPO...',
-      'OPPMMEEPPPPPPPEEMPPPO...',
-      'OPPMMMPPPNPPPPPMMMPPPO..',
-      'OPPMMMPPPNWPPPPMMMPPPO..',
-      'OPPMMMMPPWWPPPMPPPPO....',
-      'OPPMMMMMWWWWPPPMMPPPO...',
-      '.OPPMMMWWWWWWPMMPPPO....',
-      '.OPPMMMWWWWWWPMMPO......',
-      '..OPPMMWWWWWWPMPO.......',
-      '...OPPMWWWWWPMO.........',
-      '....OPPMWWWO............',
-      '.....OOOOOO.............',
-      '....KOOOOOOK............',
-      '....KOOOOOOK............',
-      '.....KKKKKK.............',
-      '........................'
-    ]
-  },
+  // ============ 第2章 野生 ============
 
   // 老虎：椭圆橙色 + 黑条纹 + 圆耳 + 凶眉
   tiger: {
@@ -296,223 +259,738 @@ const SPRITES: Record<AnimalType, AnimalSprite> = {
       S: '#e65100',  // 暗橙
       L: '#ffb74d',  // 亮橙
       T: '#1a1a1a',  // 条纹黑
-      K: '#ffffff'   // 凶眉白
+      W: '#ffffff'   // 凶眉白
     },
     pixels: [
-      '........................',
-      '...OO.O........O.OO.....',
-      '..OTMMTO......OTMMTO....',
-      '..OTMMTO......OTMMTO....',
-      '.OTMMMMTOOOOOTMMMMTO....',
-      'OTMMMMMMMMMMMMMMMMMTO...',
-      'OTMLMMMMMMMMMMMMMMMTO...',
-      'OTMMKEMMMMKEMMMMMMMTO...',
-      'OTMMKEMMMMKEMMMMMMMTO...',
-      '.OTMMMMMENMMMMMMMMTO....',
-      '.OTMMMTMMMMMMMMMMTO.....',
-      '.OTMMMMMMMMMMMMMTO......',
-      '.OTMMTMMMMMMMMMTO.......',
-      '.OTMMMTMMMMMMMMTO.......',
-      '.OTMMMMTMMMMMMTO........',
-      '..OTMMMMTMMMMTO.........',
-      '..OTMMMMMMTO............',
-      '...OTMMMMTO.............',
-      '....OTMMTO..............',
-      '.....OOTO...............',
-      '....KOOOOK..............',
-      '....KOOOOK..............',
-      '.....KKKKK..............',
-      '........................'
+      '................................',
+      '................................',
+      '...MMM....................MMM...',
+      '..MTMTM..................MTMTM..',
+      '..MTMTM..................MTMTM..',
+      '.MTMMMTM................MTMMMTM.',
+      'MTMMMMMTMMMMMMMMMMMMMMMMTMMMMMTM',
+      'MTMMMMMMMMMMMMMMMMMMMMMMMMMMMMTM',
+      'MTMLMMMMMMMMMMMMMMMMMMMMMMMMLMTM',
+      'MTMMKWEMMMMMMMMMMMMMMMMMEKWMMTM.',
+      'MTMMKWEMMMMMMMMMMMMMMMMMEKWMMTM.',
+      '.MTMMMMMENNNNNNNNNNEMMMMMEEETM..',
+      '..MTMMTMMMMMMMMMMMMMMMMMMTMETM..',
+      '..MTMMMTMMMMMMMMMMMMMMMMMTMETM..',
+      '..MTMMMMTMMMMMMMMMMMMMMMTMMETM..',
+      '..MTMMMMTMMMMMMMMMMMMMTMMMETM...',
+      '..MTMMMMMMTMMMMMMMMMTMMMMMMTM...',
+      '...MTMMMMMMTMMMMMMMTMMMMMMTM....',
+      '....MTMMMMMMMMMMMMMMMMMMMMTM....',
+      '.....MTMMMMMMMMMMMMMMMMMMTM.....',
+      '......MTMMMMMMMMMMMMMMMMTM......',
+      '.......MTMMMMMMMMMMMMMMTM.......',
+      '........MTMMMMMMMMMMMMTM........',
+      '.........MTMMMMMMMMMMTM.........',
+      '..........MTMMMMMMMMTM..........',
+      '...........MTMMMMMMTM...........',
+      '............MTMMMMTM............',
+      '.............MTMMTM.............',
+      '..............MTTM..............',
+      '...............MM...............',
+      '................................',
+      '................................',
     ]
   },
 
-  // 小熊：棕色 + 圆耳 + 圆肚 + 米色胸
+  // 狮子：金黄身体 + 棕色鬃毛环绕 + 圆耳
+  lion: {
+    palette: {
+      ...BASE,
+      M: '#ffc107',  // 主金黄（身体）
+      S: '#ff8f00',  // 暗金
+      L: '#ffe082',  // 亮金
+      T: '#6d4c41',  // 鬃毛棕
+      K: '#1a1a1a'   // 鼻黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.....TTTT..............TTTT.....',
+      '....TTTTTT............TTTTTT....',
+      '....TTTTTT............TTTTTT....',
+      '...TTTTTTTT..........TTTTTTTT...',
+      '...TTTTTTTTTTTTTTTTTTTTTTTTTT...',
+      '..TTTTTTTTTTTTTTTTTTTTTTTTTTT...',
+      '..TTTTTTTTTTTTTTTTTTTTTTTTTTTT..',
+      '.TTTMMTTTTTTTTTTTTTTTTTTMMTTTT..',
+      '.TTTMMMMTTTTTTTTTTTTTTMMMMTTTT..',
+      '.TTMMMMMMTTTTTTTTTTTTMMMMMMTTT..',
+      '.TTMMMMMMTTTTTTTTTTTTMMMMMMTTT..',
+      '.TTMMMMEEMTTTTTTTTTTEEMMMMTTTT..',
+      '.TTMMMMEEMTTTTTTTTTTEEMMMMTTTT..',
+      '..TTMMMMKKKTTTTTTTKKKMMMMTTTT...',
+      '...TTMMMMMNKTTTTTTTKNMMMMMTTT...',
+      '....TTMMMMMMTTTTTTMMMMMMMTT.....',
+      '.....TTMMMMMMMMMMMMMMMMMTT......',
+      '.......TTMMMMMMMMMMMMMMTT.......',
+      '........TTMMMMMMMMMMMTT.........',
+      '..........TTMMMMMMMMTT..........',
+      '...........TTMMMMMTT............',
+      '............TTMMMTT.............',
+      '.............TTMTT..............',
+      '..............TTT...............',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+      '................................',
+    ]
+  },
+
+  // 棕熊：棕色圆胖 + 圆耳 + 米色胸
   bear: {
     palette: {
       ...BASE,
-      M: '#a1887f',  // 主棕
-      S: '#6d4c41',  // 暗棕
-      L: '#bcaaa4',  // 亮棕
+      M: '#795548',  // 主棕
+      S: '#4e342e',  // 暗棕
+      L: '#a1887f',  // 亮棕
       W: '#fff8e1',  // 胸米色
-      N: '#1a1a1a'   // 鼻黑
+      K: '#1a1a1a'   // 鼻黑
     },
     pixels: [
-      '........................',
-      '...OOO..........OOO.....',
-      '..OMMMO........OMMMO....',
-      '..OMMMO........OMMMO....',
-      '.OMMMMMOOOOOOOOMMMMO....',
-      'OMMMMMMMMMMMMMMMMMMMO...',
-      'OMMLMMMMMMMMMMMMMMMLO...',
-      'OMMMMEEWMMMMMEEWMMMMO...',
-      'OMMMMMMNWMMMMMNWMMMMO...',
-      'OMMMMMMMNWMMMNMMMMMMO...',
-      'OMMMMMMMMMMMMMMMMMMMO...',
-      'OMMMMWWMMMMMMMMWWWMMO...',
-      'OMMMMWWWMMMMMMMWWWWMO...',
-      'OMMMMWWWWMMMMMWWWWWMO...',
-      '.OMMWWWWWMMMMWWWWWWMO...',
-      '.OMMWWWWWWMMMWWWWWWMO...',
-      '..OMWWWWWWMMMWWWWWWMO...',
-      '...OMWWWWWMMMWWWWMMO....',
-      '....OMWWWMMMMMWWMMO.....',
-      '.....OOMMMMMMMMMMO......',
-      '.....KOOOOOOOOOK........',
-      '.....KOOOOOOOOOK........',
-      '......KKKKKKKKKK........',
-      '........................'
+      '................................',
+      '................................',
+      '...MMM....................MMM...',
+      '..MMMMM..................MMMMM..',
+      '..MMMMM..................MMMMM..',
+      '.MMMMMMM................MMMMMMM.',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM',
+      'MMLMMMMMMMMMMMMMMMMMMMMMMMMLMMMM',
+      'MMMMMMMMEEMMMMMMMMEEMMMMMMMMMMM.',
+      'MMMMMMMMEEMMMMMMMMEEMMMMMMMMMMM.',
+      'MMMMMMMMMNWMMMMMNWMMMMMMMMMMMMM.',
+      '.MMMMMMMMMMNWMMMNWMMMMMMMMMMMMM.',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMMMMMWWMMMMMMMMMMMWWMMMMMMMMM.',
+      '.MMMMMWWWMMMMMMMMMMMWWWMMMMMMM..',
+      '.MMMMWWWWMMMMMMMMMMMWWWWMMMMMM..',
+      '.MMMWWWWWMMMMMMMMMMMWWWWWMMMMM..',
+      '..MMMWWWWWWMMMMMMMMMWWWWWWMMMM..',
+      '..MWWWWWWWWMMMMMMMWWWWWWWWMMM...',
+      '...MWWWWWWWWWMMMMMWWWWWWWWWMM...',
+      '...MWWWWWWWWWWMMMWWWWWWWWWMM....',
+      '....MWWWWWWWWWWWWWWWWWWWWWMM....',
+      '.....MWWWWWWWWWWWWWWWWWWWMM.....',
+      '......MWWWWWWWWWWWWWWWWWMM......',
+      '.......MWWWWWWWWWWWWWWWMM.......',
+      '........MWWWWWWWWWWWWWMM........',
+      '.........MWWWWWWWWWWWMM.........',
+      '..........MWWWWWWWWWMM..........',
+      '...........MWWWWWWWMM...........',
+      '............MWWWWWMM............',
+      '.............MWMMM..............',
     ]
   },
 
-  // 小鱼：流线型蓝色 + 三角尾鳍 + 鳞片
+  // 红狐狸：流线红橙 + 尖耳 + 白胸 + 白尾尖
+  fox: {
+    palette: {
+      ...BASE,
+      M: '#e8523a',  // 主红橙
+      S: '#c41e2a',  // 暗红
+      L: '#ff7961',  // 亮红
+      W: '#ffffff',  // 白胸白尾尖
+      K: '#1a1a1a'   // 鼻黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '...MM.....................MM....',
+      '..MMM.....................MMM...',
+      '.MMMM.....................MMMM..',
+      '.MMMMM...................MMMMM..',
+      '.MMMMMM.................MMMMMM..',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '.MMLMMMMMMMMMMMMMMMMMMMMMMMMLM..',
+      '.MMMEEMMMMMMMMMMMMMMMMMMMMMEEM..',
+      '.MMMEEMMMMMMMMMMMMMMMMMMMMMEEM..',
+      '..MMMMMMMNWMMMMMMMMMMMNWMMMMMM..',
+      '..MMMMMMMNWMMMMMMMMMMMNWMMMMMM..',
+      '..MMMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '...MMMWWWMMMMMMMMMMMMMWWWMMM....',
+      '....MMWWWWWMMMMMMMMMMWWWWWMM....',
+      '....MWWWWWWMMMMMMMMWWWWWWMM.....',
+      '.....MWWWWWWWMMMMWWWWWWWMM......',
+      '......MWWWWWWWWWWWWWWWWMM.......',
+      '.......MWWWWWWWWWWWWWWMM........',
+      '........MMMMMMMMMMMMMMMM........',
+      '.........MMMMMMMMMMMMM..........',
+      '..........MMMMMMMMMMM...........',
+      '...........MMMMMMMMM............',
+      '............MMMMMMW.............',
+      '.............MMMMW..............',
+      '..............MMW...............',
+      '...............W................',
+      '................................',
+      '................................',
+      '................................',
+    ]
+  },
+
+  // ============ 第3章 森林 ============
+
+  // 青蛙：草绿蹲坐 + 凸大眼 + 大嘴
+  frog: {
+    palette: {
+      ...BASE,
+      M: '#66bb6a',  // 主草绿
+      S: '#388e3c',  // 暗绿
+      L: '#a5d6a7',  // 亮绿
+      W: '#ffffff',  // 肚白
+      E: '#1a1a1a'   // 眼黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.......EE..............EE.......',
+      '.......EEE............EEE.......',
+      '......EEWEE..........EEWEE......',
+      '......EEWEE..........EEWEE......',
+      '.....EEEWEEE........EEEWEEE.....',
+      '.....MMMMMMM........MMMMMMM.....',
+      '....MMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMLMMMMMMMMMMMMMMMMMMLMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMWWWWWWWWWWWWWWWWWWMM....',
+      '....MMMMWWWWWWWWWWWWWWWWWWMM....',
+      '....MMMWWWWWWWWWWWWWWWWWWMM.....',
+      '....MMMWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MMWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MMWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MWWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MWWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MWWWWWWWWWWWWWWWWWWMM......',
+      '.....MWWWWWWWWWWWWWWWWWWMM......',
+      '......MWWWWWWWWWWWWWWWWWMM......',
+      '......MMMMMMMMMMMMMMMMMMMM......',
+      '.......MMMMMMMMMMMMMMMMMM.......',
+      '........MMMMMMMMMMMMMMMM........',
+      '........MMMMMMMMMMMMMMM.........',
+      '..........MMMMMMMMMMMM..........',
+      '................................',
+      '................................',
+    ]
+  },
+
+  // 鳄鱼：深绿长扁身 + 长嘴 + 锯齿背 + 黄肚
+  crocodile: {
+    palette: {
+      ...BASE,
+      M: '#2e7d32',  // 主深绿
+      S: '#1b5e20',  // 暗绿
+      L: '#4caf50',  // 亮绿
+      T: '#1a1a1a',  // 锯齿黑
+      W: '#fff9c4'   // 黄肚
+    },
+    pixels: [
+      '................................',
+      '.T.T.T.T.T.T.T.T.T.T.T.T.T.T.T..',
+      'MTMTMTMTMTMTMTMTMTMTMTMTMTMTMTM.',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '..MMMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '..MMLMMMMMMMMMMMMMMMMMMMMMLMM...',
+      '..MMMLMMMMMMMMMMMMMMMMMMMMLMM...',
+      '...MMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '...MMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '...MMMEEEMMMMMMMMMMMMMMMEEEMM...',
+      '...MMMEEEMMMMMMMMMMMMMMMEEEMM...',
+      '...MMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '...MMMMWWWWMMMMMMMMMMWWWWMMM....',
+      '....MMMWWWWWWMMMMMMWWWWWWMMM....',
+      '....MMMWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MMWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MMWWWWWWWWWWWWWWWWWWMM.....',
+      '.....MWWWWWWWWWWWWWWWWWWMM......',
+      '.....MWWWWWWWWWWWWWWWWWWMM......',
+      '......MWWWWWWWWWWWWWWWWWMM......',
+      '......MWWWWWWWWWWWWWWWWWMM......',
+      '.......MWWWWWWWWWWWWWWWMM.......',
+      '.......MWWWWWWWWWWWWWWMM........',
+      '........MWWWWWWWWWWWWWMM........',
+      '........MWWWWWWWWWWWWMM.........',
+      '.........MWWWWWWWWWWMM..........',
+      '..........MWWWWWWWWMM...........',
+      '...........MWWWWWWMM............',
+      '............MWWWWMM.............',
+      '.............MWMMM..............',
+    ]
+  },
+
+  // 大象：灰色大圆身 + 长鼻 + 大耳 + 象牙
+  elephant: {
+    palette: {
+      ...BASE,
+      M: '#90a4ae',  // 主灰
+      S: '#546e7a',  // 暗灰
+      L: '#cfd8dc',  // 亮灰
+      W: '#ffffff',  // 象牙白
+      K: '#1a1a1a'   // 鼻孔黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '....MMMMMM..............MMMM....',
+      '...MMMMMMMM............MMMMMM...',
+      '..MMMMMMMMMM..........MMMMMMMM..',
+      '..MMMMMMMMMM..........MMMMMMMM..',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM',
+      'MMMMLMMMMMMMMMMMMMMMMMMMMMMLMMM.',
+      'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMMMMEEEMMMMMMMMMMMMMMMEEEMMMM.',
+      '.MMMMMEEEMMMMMMMMMMMMMMMEEEMMMM.',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMMMWMMMMMMMMMMMMMMMMMMWMMMMM..',
+      '..MMMMWMMMMMMMMMMMMMMMMMWMMMMM..',
+      '...MMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '...MMMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMM.....',
+      '.....MMMMMMMMMMMMMMMMMMMMMM.....',
+      '.....MMMMMMMMMMMMMMMMMMMMM......',
+      '......MMMMMMMMMMMMMMMMMMMM......',
+      '......MMMMMMMMMMMMMMMMMMM.......',
+      '.......MMMMMMMMMMMMMMMMMM.......',
+      '.......MMMMMMMMMMMMMMMMM........',
+      '........MMMMMMMMMMMMMMMM........',
+      '........MMMMMMMMMMMMMMM.........',
+      '.........MMMMMMMMMMMMMM.........',
+      '.........MMMMMMMMMMMMM..........',
+      '..........MMMMMMMMMMMM..........',
+      '..........MMMMMMMMMMM...........',
+    ]
+  },
+
+  // 熊猫：白色圆胖 + 黑耳 + 黑眼圈 + 黑四肢
+  panda: {
+    palette: {
+      ...BASE,
+      M: '#fafafa',  // 主白
+      S: '#e0e0e0',  // 阴影
+      L: '#ffffff',  // 亮白
+      K: '#1a1a1a'   // 黑色（耳、眼圈、四肢）
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '..KKKK....................KKKK..',
+      '.KKKKKK..................KKKKKK.',
+      '.KKKKKK..................KKKKKK.',
+      'KKKKKKKK................KKKKKKK.',
+      'KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK',
+      'KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK',
+      'KKMMMMMMKKKKKKKKKKKKKKKMMMMMMKK.',
+      'KKMMMMMMKKKKKKKKKKKKKKKMMMMMMKK.',
+      '.KKMMKKMMMKKKKKKKKKKKKKMMKKMMMK.',
+      '.KKMMKKMMMKKKKKKKKKKKKKMMKKMMMK.',
+      '.KKMMKKMMMKKKKKKKKKKKKKMMKKMMMK.',
+      '.KKMMMMMMKKKKKKKKKKKKKKKMMMMMK..',
+      '..KKMMMMKKKKKKKNWNNWKKKKKMMMMK..',
+      '...KKKKKKKKKKKNNWWNNKKKKKKKKK...',
+      '...KKKKKKKKKKKKKKKKKKKKKKKKK....',
+      '....KKKKKKKKKKKKKKKKKKKKKKK.....',
+      '.....KKKKKKKKKKKKKKKKKKKKK......',
+      '.....KKKKKKKKKKKKKKKKKKKKK......',
+      '......KKKKKKKKKKKKKKKKKKKK......',
+      '......KKKKKKKKKKKKKKKKKKKK......',
+      '......KKKKKKKKKKKKKKKKKKK.......',
+      '......KKKKKKKKKKKKKKKKKKK.......',
+      '.......KKKKKKKKKKKKKKKKKK.......',
+      '........KKKKKKKKKKKKKKKK........',
+      '........KKKKKKKKKKKKKKKK........',
+      '.........KKKKKKKKKKKKKK.........',
+      '..........KKKKKKKKKKKK..........',
+      '...........KKKKKKKKKK...........',
+      '............KKKKKKKK............',
+      '.............KKKKKK.............',
+    ]
+  },
+
+  // ============ 第4章 鸟类 ============
+
+  // 火烈鸟：粉红 + 长腿 + S形长脖 + 弯嘴
+  flamingo: {
+    palette: {
+      ...BASE,
+      M: '#ec407a',  // 主粉红
+      S: '#c2185b',  // 暗粉
+      L: '#f48fb1',  // 亮粉
+      N: '#1a1a1a',  // 嘴黑
+      K: '#6d4c41'   // 腿棕
+    },
+    pixels: [
+      '................................',
+      '...............NN...............',
+      '..............NNN...............',
+      '..............NNN...............',
+      '..............NNM...............',
+      '..............NMM...............',
+      '..............MMM...............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMML..............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............MMM...............',
+      '..............K.K...............',
+      '..............K.K...............',
+    ]
+  },
+
+  // 孔雀：青绿身 + 开屏尾羽（眼状图案）+ 金色羽冠
+  peacock: {
+    palette: {
+      ...BASE,
+      M: '#00acc1',  // 主青绿
+      S: '#00838f',  // 暗青
+      L: '#4dd0e1',  // 亮青
+      T: '#1a237e',  // 尾羽眼深蓝
+      C: '#ffd700',  // 尾羽金 + 羽冠金
+      K: '#1a1a1a'   // 眼黑
+    },
+    pixels: [
+      '...............CC...............',
+      '..............CCCC..............',
+      '..............CCCC..............',
+      '...............CC...............',
+      '...........TTTTTTTTTT...........',
+      '...........TTCCTTCCTT...........',
+      '.........TTCCTTCCTTCCT..........',
+      '.........TTCCTTCCTTCCTT.........',
+      '.......TTCCTTCCTTCCTTCCT........',
+      '.......TTCCTTCCTTCCTTCCTT.......',
+      '.....TTCCTTCCTTCCTTCCTTCCT......',
+      '.....TTCCTTCCTTCCTTCCTTCCTT.....',
+      '...TTCCTTCCTTCCTTCCTTCCTTCCT....',
+      '...TTCCTTCCTTCCTTCCTTCCTTCCTT...',
+      '.TTCCTTCCTTCCTTCCTTCCTTCCTTCCT..',
+      '.TTCCTTCCTTCCTTCCTTCCTTCCTTCCTT.',
+      '.TTCCTTCCTTCCTTCCTTCCTTCCTTCCTT.',
+      '.TTMMMMMMTTMMMMMMTTMMMMMMTTMMMM.',
+      '..TMMMMMMTTMMMMMMTTMMMMMMTTMMM..',
+      '..TMMEEEMTTMMEEEMTTMMEEEMTTMM...',
+      '....TMMMMMTTMMMMMTTMMMMMTTMM....',
+      '....TMMMMMTTMMMMMTTMMMMMTTM.....',
+      '.....TMMMMTTMMMMTTMMMMTTTM......',
+      '.......TMMMTTMMMTTMMMTTTM.......',
+      '........TMMTTMMTTMMTTTM.........',
+      '..........TMTMTMTMTTM...........',
+      '...........TMTMTMTTM............',
+      '............TTTTTTM.............',
+      '.............TTTTM..............',
+      '..............TTM...............',
+      '...............M................',
+      '................................',
+    ]
+  },
+
+  // 企鹅：深灰蓝背 + 白肚 + 橙嘴 + 橙脚
+  penguin: {
+    palette: {
+      ...BASE,
+      M: '#37474f',  // 主深灰蓝（背）
+      S: '#263238',  // 暗灰
+      L: '#546e7a',  // 亮灰
+      W: '#ffffff',  // 白肚
+      N: '#ff9800'   // 嘴橙
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.............MMMMMM.............',
+      '............MMMMMMMM............',
+      '............MMMMMMMM............',
+      '............MKMMKMMM............',
+      '............MKMMKMMM............',
+      '............MMMMMMMM............',
+      '...........MMMMMMMMMM...........',
+      '...........MMMWWWWMMM...........',
+      '..........MMMWWWWWWMMM..........',
+      '..........MMMWWWWWWMMM..........',
+      '.........MMMWWWWWWWWMMM.........',
+      '.........MMMWWWWWWWWMMM.........',
+      '........MMMWWWWWWWWWWMMM........',
+      '........MMMWWWWWWWWWWMMM........',
+      '.......MMMWWWWWWWWWWWWMMM.......',
+      '.......MMMWWWWWWWWWWWWMMM.......',
+      '......MMMWWWWWWWWWWWWWWMMM......',
+      '......MMMWWWWWWWWWWWWWWMMM......',
+      '.....MMMWWWWWWWWWWWWWWWWMMM.....',
+      '.....MMMWWWWWWWWWWWWWWWWMMM.....',
+      '....MMMWWWWWWWWWWWWWWWWWWMMM....',
+      '....MMMWWWWWWWWWWWWWWWWWWMMM....',
+      '...MMMWWWWWWWWWWWWWWWWWWWWMMM...',
+      '...MMMWWWWWWWWWWWWWWWWWWWWMMM...',
+      '..MMMMWWWWWWWWWWWWWWWWWWWWMMMM..',
+      '...MMMMMNNNNN.....NNNNNMMMMMM...',
+      '......NNNNNN.......NNNNNN.......',
+      '......NNNNN.........NNNNN.......',
+      '.......NNN...........NNN........',
+      '................................',
+    ]
+  },
+
+  // 鹦鹉：蓝绿身 + 红头胸 + 黄翅 + 弯嘴
+  parrot: {
+    palette: {
+      ...BASE,
+      M: '#00897b',  // 主蓝绿（身）
+      S: '#00695c',  // 暗蓝绿
+      L: '#4db6ac',  // 亮蓝绿
+      C: '#d32f2f',  // 头胸红
+      T: '#fbc02d',  // 翅黄
+      K: '#1a1a1a'   // 弯嘴黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.............KKKKKK.............',
+      '...........KCCCCCCCK............',
+      '...........KCCCCCCCK............',
+      '..........KCCCCCCCCCK...........',
+      '..........KCCMMCCMMCK...........',
+      '..........KCCMMCCMMCK...........',
+      '..........KCCCCCCCCCK...........',
+      '.........KCCCCCCCCCCCK..........',
+      '........KCCCCCCCCCCCCCK.........',
+      '.......KCCCCCCCCCCCCCCCK........',
+      '......KCCCCMMMMMMMMCCCCCK.......',
+      '.....KCCCCMMMMTTMMMMCCCCCK......',
+      '....KCCCCMMMMTTTTMMMMCCCCCK.....',
+      '...KCCCCMMMMMTTTTMMMMMCCCCCK....',
+      '..KCCCCMMMMMMTTTTMMMMMMCCCCCK...',
+      '..KCCCMMMMMMMTTTTMMMMMMMCCCCK...',
+      '..KCCMMMMMMMMTTTTMMMMMMMMCCCK...',
+      '...KCCMMMMMMMTTTTMMMMMMMCCCK....',
+      '...KCCMMMMMMMTTTTMMMMMMMCCCK....',
+      '....KCCMMMMMMTTTTMMMMMMCCCK.....',
+      '.....KCCMMMMMTTTTMMMMMCCCK......',
+      '......KCCMMMMTTTTMMMMCCCK.......',
+      '........KCCMMMTTTMMMCCCK........',
+      '.........KCCMMTTTMMCCCK.........',
+      '..........KCCMTTMCCCK...........',
+      '...........KCCMMCCCK............',
+      '............KCCCCCK.............',
+      '.............KCCCK..............',
+      '..............KCK...............',
+      '...............K................',
+    ]
+  },
+
+  // ============ 第5章 海洋 ============
+
+  // 小鱼：天蓝流线 + 三角尾鳍 + 鳞片
   fish: {
     palette: {
       ...BASE,
-      M: '#42a5f5',  // 主蓝
-      S: '#1565c0',  // 暗蓝
+      M: '#42a5f5',  // 主天蓝
+      S: '#1976d2',  // 暗蓝
       L: '#90caf9',  // 亮蓝
       T: '#0d47a1',  // 鳞片深蓝
-      E: '#ffffff'   // 眼白
+      W: '#ffffff'   // 眼白
     },
     pixels: [
-      '........................',
-      '..................OO....',
-      '.................OMMMO..',
-      '................OMMMMO..',
-      '...............OMMMMMO..',
-      '......OOOOOOOOOMMMMMMO..',
-      '.....OMMMMMMMMMMMMMMMO..',
-      '....OMMLMMMMMMMMMMMMMO..',
-      '...OMMLLMMMMMMMMMMMMO...',
-      '..OMMLLLMMMMMMMMMMMO....',
-      '.OMMLLTLMMMMMMMMMMO.....',
-      'OMMLLTTLMMMMMMMMMO......',
-      'OMMEEWMMMMMMMMMMO.......',
-      'OMMMMMMMMMMMMMMO........',
-      'OMMMMMMMMMMMMO..........',
-      '.OMMMMMMMMMMO...........',
-      '..OMMMMMMMO.............',
-      '...OMMMMMO..............',
-      '....OMMMO...............',
-      '.....OOO................',
-      '......O.................',
-      '........................',
-      '........................',
-      '........................'
+      '................................',
+      '................................',
+      '................................',
+      '...............MM...............',
+      '..............MMMM..............',
+      '.............MMMMM..............',
+      '.............MMMMMM.............',
+      '..MMMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '..MMLMMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '..MMLLMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '.MMLLTMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '.MMLLTTLMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMLLTTTLMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMEEWMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.',
+      '.MMMMMMMMMMMMMMMMMMMMMMMMMMMMM..',
+      '..MMMMMMMMMMMMMMMMMMMMMMMMMMM...',
+      '...MMMMMMMMMMMMMMMMMMMMMMMMM....',
+      '....MMMMMMMMMMMMMMMMMMMMMMM.....',
+      '.....MMMMMMMMMMMMMMMMMMMMM......',
+      '......MMMMMMMMMMMMMMMMMMM.......',
+      '.......MMMMMMMMMMMMMMMMM........',
+      '........MMMMMMMMMMMMMMM.........',
+      '.........MMMMMMMMMMMMM..........',
+      '..........MMMMMMMMMMM...........',
+      '...........MMMMMMMMM............',
+      '............MMMMMMM.............',
+      '.............MMMMM..............',
+      '..............MMM...............',
+      '...............M................',
+      '................................',
+      '................................',
     ]
   },
 
-  // 鲸鱼：大椭圆蓝紫色 + 喷水 + 白肚
+  // 鲸鱼：深蓝大椭圆 + 喷水 + 白肚
   whale: {
     palette: {
       ...BASE,
-      M: '#5c6bc0',  // 主蓝紫
-      S: '#3949ab',  // 暗蓝紫
-      L: '#9fa8da',  // 亮蓝紫
+      M: '#1e88e5',  // 主深蓝
+      S: '#1565c0',  // 暗蓝
+      L: '#64b5f6',  // 亮蓝
       W: '#ffffff',  // 白肚
       H: '#81d4fa'   // 喷水蓝
     },
     pixels: [
-      '.........HH.............',
-      '........HOOH............',
-      '.........OO.............',
-      '........HOO.............',
-      '.......HOO..............',
-      '.....OOMMMNO............',
-      '....OMMMMMMMNO..........',
-      '..OMMMMMMMMMMMNO........',
-      '.OMLMMMMMMMMMMMMNO......',
-      'OMMLMMMMMMMMMMMMMMNO....',
-      'OMMEEWMMMMMMMMMMMMMNO...',
-      'OMMMMMMMMMMMMMMMMMMMNO..',
-      'OMMMMWWMMMMMMMMMMMMMNO..',
-      'OMMMMWWWMMMMMMMMMMMMNO..',
-      '.OMMWWWWMMMMMMMMMMNO....',
-      '.OMMWWWWWMMMMMMMMNO.....',
-      '..OMWWWWWWMMMMMMNO......',
-      '...OMWWWWWWMMMMNO.......',
-      '....OMWWWWWWMMNO........',
-      '.....OMWWWWWMMO.........',
-      '......OMWWWMMO..........',
-      '.......OOMMMO...........',
-      '........OOOO............',
-      '........................'
+      '................................',
+      '..............HHH...............',
+      '..........HOOOH.................',
+      '..........HHOHH.................',
+      '..........HHOH..................',
+      '.........HHOH...................',
+      '........HHOH....................',
+      '.......HHOH.....................',
+      '......HHOH......................',
+      '............MMMMMMM.............',
+      '...........MMMMMMMMMM...........',
+      '..........MMLMMMMMMMMM..........',
+      '.........MMLMMMMMMMMMMM.........',
+      '.......MMLLMMMMMMMMMMMMM........',
+      '......MMLLMMMMMMMMMMMMMMMM......',
+      '.....MMEEWMMMMMMMMMMMMMMMM......',
+      '.....MMMMMMMMMMMMMMMMMMMMM......',
+      '.....MMMMWWMMMMMMMMMMMMMMM......',
+      '.....MMMMWWWMMMMMMMMMMMMMM......',
+      '......MMMWWWWMMMMMMMMMMMMM......',
+      '......MMMWWWWWMMMMMMMMMMMM......',
+      '......MMWWWWWWMMMMMMMMMMM.......',
+      '.......MWWWWWWWMMMMMMMMMM.......',
+      '.......MWWWWWWWMMMMMMMMM........',
+      '........MWWWWWWWMMMMMMMM........',
+      '........MWWWWWWWMMMMMMM.........',
+      '.........MWWWWWWWMMMMMM.........',
+      '.........MWWWWWWWMMMMM..........',
+      '..........MWWWWWWWMMMM..........',
+      '...........MWWWWWWMMM...........',
+      '............MWWWWWMM............',
+      '.............MWMMM..............',
     ]
   },
 
-  // 小鸭：椭圆黄色 + 扁平橙嘴 + 翅膀
-  duck: {
+  // 章鱼：紫红圆头 + 8触手 + 吸盘
+  octopus: {
     palette: {
       ...BASE,
-      M: '#ffeb3b',  // 主黄
-      S: '#f9a825',  // 暗黄
-      L: '#fff59d',  // 亮黄
-      N: '#ff6f00',  // 嘴橙
-      W: '#ffffff'   // 翅白
+      M: '#c2185b',  // 主紫红
+      S: '#880e4f',  // 暗紫
+      L: '#e91e63',  // 亮紫
+      T: '#ff80ab',  // 吸盘粉
+      E: '#1a1a1a'   // 眼黑
     },
     pixels: [
-      '........................',
-      '.......OO...............',
-      '......ONNO..............',
-      '.....ONNNNO.............',
-      '....OMMMMMO.............',
-      '...OMMMMMMMNO...........',
-      '..OMLMMMMMMMNO..........',
-      '.OMMMMMMMMMMMNO.........',
-      'OMMMEEWMMMMMMMNO........',
-      'OMMMMMMMMMMMMMNO........',
-      'OMMMMWMMMMMMMMNO........',
-      'OMMMMWWWMMMMMMNO........',
-      'OMMMMWWWWMMMMNO.........',
-      'OMMMMWWWWMMMNO..........',
-      '.OMMMWWWWMMNO...........',
-      '.OMMMMWWMMNO............',
-      '..OMMMMMMNO.............',
-      '...OMMMMNO..............',
-      '....NNNNNO..............',
-      '....NNOOOO..............',
-      '....KOOOOO..............',
-      '....KOOOOO..............',
-      '.....KKKKK..............',
-      '........................'
+      '................................',
+      '................................',
+      '.............MMMMMM.............',
+      '...........MMMMMMMMMM...........',
+      '..........MMMMMMMMMMMM..........',
+      '.........MMLMMMMMMMMLM..........',
+      '.........MMLMMMMMMMMLM..........',
+      '........MMMMMMMMMMMMMMM.........',
+      '........MMMEEEMMMEEEMMM.........',
+      '........MMMEEEMMMEEEMMM.........',
+      '.......MMMMMMMMMMMMMMMMM........',
+      '.......MMMMMMMMMMMMMMMMM........',
+      '......MMMMMMMMMMMMMMMMMMM.......',
+      '.....MMMMMMMMMMMMMMMMMMMMM......',
+      '.....MMMMMMMMMMMMMMMMMMMMM......',
+      '....MMMMMMMMMMMMMMMMMMMMMMM.....',
+      '...MMMMTMMMMMMMMMMMMMMMMTMMMM...',
+      '...MMMTTTMMMMMMMMMMMMMMTTTMMM...',
+      '...MMTTTTTMMMMMMMMMMMMTTTTTMM...',
+      '...MTTTTTTTMMMMMMMMMMTTTTTTTM...',
+      '...MTTTTTTTTMMMMMMMMTTTTTTTTM...',
+      '...MTTTTTTTTTMMMMMMTTTTTTTTTM...',
+      '....MTTTTTTTTTMMMMTTTTTTTTTM....',
+      '....MTTTTTTTTTTMMTTTTTTTTTTM....',
+      '.....MTTTTTTTTTTTTTTTTTTTTM.....',
+      '.....MTTTTTTTTTTTTTTTTTTTM......',
+      '......MTTTTTTTTTTTTTTTTTM.......',
+      '.......MTTTTTTTTTTTTTTTM........',
+      '........MTTTTTTTTTTTTTM.........',
+      '.........MTTTTTTTTTTTM..........',
+      '..........MTTTTTTTTTM...........',
+      '...........MMMMMMMMM............',
     ]
   },
 
-  // 白鹅：S形长脖 + 白色 + 橙脚
-  goose: {
+  // 水母：淡紫钟形头 + 飘逸触须
+  jellyfish: {
     palette: {
       ...BASE,
-      M: '#f5f5f5',  // 主白
-      S: '#bdbdbd',  // 阴影
-      L: '#ffffff',  // 亮白
-      N: '#ff6f00',  // 嘴橙
-      W: '#e0e0e0'   // 翅灰
+      M: '#ab47bc',  // 主淡紫
+      S: '#8e24aa',  // 暗紫
+      L: '#ce93d8',  // 亮紫
+      T: '#ffffff',  // 触须白
+      E: '#1a1a1a'   // 眼黑
     },
     pixels: [
-      '..............OO........',
-      '..............ONO.......',
-      '..............ONO.......',
-      '..............OO........',
-      '.............OWWO.......',
-      '............OMMMO.......',
-      '...........OMMMMO.......',
-      '..........OMMMMMO.......',
-      '.........OMMMMMMO.......',
-      '........OMMMMMMMO.......',
-      '.......OMMMMMMMMO.......',
-      '......OMMMMMMMMMO.......',
-      '.....OMMMMMMMMMMO.......',
-      'OOMLMMMMMMMMMMMMMO......',
-      'OMMMMMMMMMMMMMMMMNO.....',
-      'OMMEEWMMMMMMMMMMMNO.....',
-      'OMMMMMMMMMMMMMMMMNO.....',
-      '.OMMMMMMMMMMMMMMNO......',
-      '.OMMWWMMMMMMMMMNO.......',
-      '..OMWWWMMMMMMMNO........',
-      '...OMWMMMMMMMNO.........',
-      '....NNOOOOONN...........',
-      '....NNOOOOONN...........',
-      '.....KKKKKKKK...........'
+      '................................',
+      '................................',
+      '.............MMMMMM.............',
+      '...........MMLLLLLLM............',
+      '..........MMLLLLLLLLM...........',
+      '.........MMLLLLLLLLLLM..........',
+      '........MMLLLLLLLLLLLLM.........',
+      '.......MMLLLLLLLLLLLLLLM........',
+      '.......MMLLLLEEELLEEELLLM.......',
+      '.....MMLLLLLLEEELLEEELLLLM......',
+      '.....MMLLLLLLLLLLLLLLLLLLM......',
+      '....MMLLLLLLLLLLLLLLLLLLLLM.....',
+      '....MMLLLLLLLLLLLLLLLLLLLLM.....',
+      '...MMLLLLLLLLLLLLLLLLLLLLLLM....',
+      '...MMLLLLLLLLLLLLLLLLLLLLLLM....',
+      '..MMLLLLLLLLLLLLLLLLLLLLLLLLM...',
+      '..MMLLLLLLLLLLLLLLLLLLLLLLLLM...',
+      '..MMLLLLLLLLLLLLLLLLLLLLLLLLM...',
+      '...MLLLLLLLLLLLLLLLLLLLLLLLM....',
+      '....MLLLLLLLLLLLLLLLLLLLLLM.....',
+      '.....MLLLLLLLLLLLLLLLLLLLLM.....',
+      '......MLLLLLLLLLLLLLLLLLLM......',
+      '.......MLLLLLLLLLLLLLLLLM.......',
+      '.......MTTMTTMTTMTTMTTMTM.......',
+      '......MTTTTTTTTTTTTTTTTTTM......',
+      '.....MTTTTTTTTTTTTTTTTTTTTM.....',
+      '....MTTTTTTTTTTTTTTTTTTTTTTM....',
+      '...MTTTTTTTTTTTTTTTTTTTTTTTTM...',
+      '...MTTTTTTTTTTTTTTTTTTTTTTTTM...',
+      '....MTTTTTTTTTTTTTTTTTTTTTTM....',
+      '.....MTTTTTTTTTTTTTTTTTTTTM.....',
+      '......MTTTTTTTTTTTTTTTTTTM......',
     ]
   }
 }
@@ -522,16 +1000,14 @@ const SPRITES: Record<AnimalType, AnimalSprite> = {
  *
  * @param ctx Canvas 2D 上下文
  * @param animal 动物类型
- * @param variant 变体（1=戴帽子）
  * @param frame 帧：'idle' | 'hover'
- * @param scale 缩放倍数（1 = 24px，2 = 48px...）
+ * @param scale 缩放倍数（1 = 32px，2 = 64px...）
  * @param offsetX 画布内 x 偏移
  * @param offsetY 画布内 y 偏移
  */
 export function drawAnimal(
   ctx: CanvasRenderingContext2D,
   animal: AnimalType,
-  variant: 0 | 1,
   frame: 'idle' | 'hover',
   scale: number,
   offsetX: number,
@@ -563,7 +1039,6 @@ export function drawAnimal(
         case 'P': color = pal.P; break
         case 'E': color = pal.E; break
         case 'B': color = pal.B; break
-        case 'O': color = pal.O; break
         case 'N': color = pal.N; break
         case 'T': color = pal.T; break
         case 'C': color = pal.C; break
@@ -586,74 +1061,44 @@ export function drawAnimal(
       )
     }
   }
-
-  // variant 1：戴一顶小帽子（头顶位置）
-  if (variant === 1) {
-    drawHat(ctx, scale, offsetX, offsetY + bounceY)
-  }
-}
-
-/**
- * 绘制小帽子（variant 1 专用）
- */
-function drawHat(
-  ctx: CanvasRenderingContext2D,
-  scale: number,
-  offsetX: number,
-  offsetY: number
-): void {
-  // 帽子像素（5×4）
-  const hat = [
-    '.RRR.',
-    'RRRRR',
-    'RRRRR',
-    'KKKKK'
-  ]
-  const hatColor = '#e91e63'
-  const hatShadow = '#ad1457'
-  const hatBrim = '#1a1a1a'
-  const startCol = 14
-  const startRow = 1
-
-  for (let row = 0; row < hat.length; row++) {
-    for (let col = 0; col < hat[row].length; col++) {
-      const ch = hat[row][col]
-      if (ch === '.') continue
-      if (ch === 'K') ctx.fillStyle = hatBrim
-      else if (row === 0) ctx.fillStyle = hatShadow
-      else ctx.fillStyle = hatColor
-      ctx.fillRect(
-        offsetX + (startCol + col) * scale,
-        offsetY + (startRow + row) * scale,
-        scale,
-        scale
-      )
-    }
-  }
 }
 
 /**
  * 获取动物的背景色（用于牌面背景）
+ * 固定浅色背景，不跟随动物主色，避免同色融合看不出轮廓
  */
-export function getAnimalBgColor(animal: AnimalType): string {
-  const sprite = SPRITES[animal]
-  return sprite ? sprite.palette.M + '33' : '#ffffff33'
+export function getAnimalBgColor(_animal: AnimalType): string {
+  return '#f8f5ee'
 }
 
 /**
- * 动物中文名映射
+ * 动物中文名映射（20 种）
  */
 export const ANIMAL_NAMES: Record<AnimalType, string> = {
+  // 第1章 家畜
   sheep: '绵羊',
+  pig: '小猪',
   chicken: '小鸡',
-  cat: '小猫',
   dog: '小狗',
-  rabbit: '兔子',
-  hamster: '仓鼠',
+  // 第2章 野生
   tiger: '老虎',
-  bear: '小熊',
+  lion: '狮子',
+  bear: '棕熊',
+  fox: '狐狸',
+  // 第3章 森林
+  frog: '青蛙',
+  crocodile: '鳄鱼',
+  elephant: '大象',
+  panda: '熊猫',
+  // 第4章 鸟类
+  flamingo: '火烈鸟',
+  peacock: '孔雀',
+  penguin: '企鹅',
+  parrot: '鹦鹉',
+  // 第5章 海洋
   fish: '小鱼',
   whale: '鲸鱼',
-  duck: '小鸭',
-  goose: '白鹅'
+  octopus: '章鱼',
+  jellyfish: '水母'
 }
+

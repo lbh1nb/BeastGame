@@ -2,10 +2,9 @@ import { Howl } from 'howler'
 import type { AnimalType } from '@game/types'
 import toneGenerator from './tone-generator'
 
-/**
- * 音效管理器（单例）
+/** 音效管理器（单例）
  * - BGM 循环播放，SFX 一次性播放
- * - 动物叫声：悬停时播放，每种动物一个音频文件
+ * - 动物叫声：游戏内统一使用温和风铃音效，加载界面装饰动物使用真实叫声
  * - 音频文件可能不存在，所有加载/播放均 try-catch 静默失败
  * - 资源路径通过 window.gameAPI.asset.resolve('audio/xxx.mp3') 获取
  */
@@ -84,20 +83,33 @@ const TIER_SFX_MAP: Record<ComboTier, SfxName> = {
   godlike: 'combo_godlike'
 }
 
-/** 动物叫声文件名映射 */
+/** 动物叫声文件名映射（20种动物） */
 const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
+  // 第1章 家畜
   sheep: 'animal_sheep.mp3',
+  pig: 'animal_pig.mp3',
   chicken: 'animal_chicken.mp3',
-  cat: 'animal_cat.mp3',
   dog: 'animal_dog.mp3',
-  rabbit: 'animal_rabbit.mp3',
-  hamster: 'animal_hamster.mp3',
+  // 第2章 野生
   tiger: 'animal_tiger.mp3',
+  lion: 'animal_lion.mp3',
   bear: 'animal_bear.mp3',
+  fox: 'animal_fox.mp3',
+  // 第3章 森林
+  frog: 'animal_frog.mp3',
+  crocodile: 'animal_crocodile.mp3',
+  elephant: 'animal_elephant.mp3',
+  panda: 'animal_panda.mp3',
+  // 第4章 鸟类
+  flamingo: 'animal_flamingo.mp3',
+  peacock: 'animal_peacock.mp3',
+  penguin: 'animal_penguin.mp3',
+  parrot: 'animal_parrot.mp3',
+  // 第5章 海洋
   fish: 'animal_fish.mp3',
   whale: 'animal_whale.mp3',
-  duck: 'animal_duck.mp3',
-  goose: 'animal_goose.mp3'
+  octopus: 'animal_octopus.mp3',
+  jellyfish: 'animal_jellyfish.mp3'
 }
 
 /** 支持的 BGM 名（可扩展） */
@@ -205,12 +217,23 @@ class AudioManager {
 
   /**
    * 播放一次性音效
-   * - 优先用 Howler 播放音频文件（若存在）
-   * - 文件缺失时回退到 ToneGenerator 程序化生成
+   * - match 和 combo 音效始终使用合成音效（toneGenerator），不使用真实文件
+   * - 其他音效优先用 Howler 播放音频文件，文件缺失时回退到合成
    * - 任何异常都静默处理，防止影响 UI
    */
   async playSfx(name: SfxName): Promise<void> {
     if (this.sfxVolume <= 0) return
+
+    // match 和 combo 音效：始终使用合成音效，确保清脆短促
+    if (name === 'match' || name.startsWith('combo_')) {
+      try {
+        toneGenerator.playSfx(name)
+      } catch {
+        // 静默失败
+      }
+      return
+    }
+
     try {
       const howl = await this.loadHowl(`audio/sfx_${name}.mp3`, false)
       if (howl) {
@@ -234,13 +257,61 @@ class AudioManager {
   }
 
   /**
-   * 播放动物叫声（悬停时触发）
-   * - 优先用 Howler 播放音频文件（若存在）
-   * - 文件缺失时回退到 ToneGenerator 程序化生成
+   * 播放动物叫声
+   * - 优先用 Howler 播放音频文件，缺失时回退程序化生成
    * - 任何异常都静默处理，防止影响 UI
    */
   async playAnimalSound(animal: AnimalType): Promise<void> {
     if (this.sfxVolume <= 0) return
+
+    try {
+      const fileName = ANIMAL_SFX_MAP[animal]
+      if (!fileName) return
+      const howl = await this.loadHowl(`audio/${fileName}`, false)
+      if (howl) {
+        howl.volume(this.sfxVolume / 100)
+        try {
+          howl.play()
+          return
+        } catch {
+          // 播放失败，回退
+        }
+      }
+      // 回退：程序化生成
+      toneGenerator.playAnimalSound(animal)
+    } catch {
+      try {
+        toneGenerator.playAnimalSound(animal)
+      } catch {
+        // 静默失败
+      }
+    }
+  }
+
+  /**
+   * 播放温和模式消除反馈音效（风铃音色）
+   * - 温和模式下消除成功时调用，替代 match 音效
+   * - 始终使用合成音效（toneGenerator），确保短促清脆
+   * - 任何异常都静默处理，防止影响 UI
+   */
+  playGentleClickSound(): void {
+    if (this.sfxVolume <= 0) return
+    try {
+      toneGenerator.playGentleAnimalSound()
+    } catch {
+      // 静默失败
+    }
+  }
+
+  /**
+   * 播放装饰动物音效（加载界面/关卡选择等场景）
+   * - 始终播放真实动物叫声，不受动物音效模式影响
+   * - 优先用 Howler 播放音频文件，缺失时回退程序化生成
+   * - 任何异常都静默处理，防止影响 UI
+   */
+  async playDecorAnimalSound(animal: AnimalType): Promise<void> {
+    if (this.sfxVolume <= 0) return
+
     try {
       const fileName = ANIMAL_SFX_MAP[animal]
       if (!fileName) return
@@ -267,32 +338,15 @@ class AudioManager {
 
   /**
    * 播放连击夸赞音效
-   * - 优先用 Howler 播放音频文件（若存在）
-   * - 文件缺失时回退到 ToneGenerator 程序化生成
+   * - 始终使用合成音效（toneGenerator），确保短促清脆
    * - 任何异常都静默处理，防止影响 UI
    */
   async playComboPraise(tier: ComboTier): Promise<void> {
     if (this.sfxVolume <= 0) return
     try {
-      const sfxName = TIER_SFX_MAP[tier]
-      const howl = await this.loadHowl(`audio/sfx_${sfxName}.mp3`, false)
-      if (howl) {
-        howl.volume(this.sfxVolume / 100)
-        try {
-          howl.play()
-          return
-        } catch {
-          // 播放失败，回退
-        }
-      }
-      // 回退：程序化生成
       toneGenerator.playComboPraise(tier)
     } catch {
-      try {
-        toneGenerator.playComboPraise(tier)
-      } catch {
-        // 静默失败
-      }
+      // 静默失败
     }
   }
 

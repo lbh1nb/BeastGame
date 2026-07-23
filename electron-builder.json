@@ -10,8 +10,8 @@
   ],
   "extraResources": [
     {
-      "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
-      "to": "native/better_sqlite3.node"
+      "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+      "to": "native/sql-wasm.wasm"
     },
     {
       "from": "resources",

@@ -12,7 +12,7 @@
 flowchart TB
     subgraph Main["主进程 Electron Main"]
         WIN["窗口管理<br/>800×1200 竖版"]
-        DB["SQLite 数据层<br/>better-sqlite3"]
+        DB["SQLite 数据层<br/>sql.js"]
         IPC["IPC Handlers<br/>5个模块"]
         REPO["Repository<br/>CRUD"]
     end
@@ -46,7 +46,7 @@ flowchart TB
 
 | 层 | 职责 | 技术 |
 |---|---|---|
-| **主进程** | 窗口管理、数据库读写、文件系统 | Electron + better-sqlite3 |
+| **主进程** | 窗口管理、数据库读写、文件系统 | Electron + sql.js |
 | **Preload** | 安全桥接，暴露受限 API | contextBridge |
 | **渲染进程** | UI 渲染、游戏逻辑、状态管理 | Vue 3 + Pinia + 纯TS引擎 |
 
@@ -260,22 +260,22 @@ erDiagram
 ```mermaid
 flowchart TD
     A["app.whenReady"] --> B["initDB()"]
-    B --> C["路径: userData/data.db"]
-    C --> D{"文件存在?"}
+    B --> C["加载 sql.js WASM"]
+    C --> D{"数据库文件存在?"}
     D -->|否| E["首次启动"]
-    E --> F["加载 nativeBinding<br/>打包: resources/native/"]
-    F --> G["new Database(dbPath, options)"]
-    G --> H["启用 WAL + foreign_keys"]
-    H --> I["执行 schema.sql 建表"]
-    I --> J["initDefaultSettings<br/>音量=80"]
-    J --> K["initLevelProgress<br/>第1关unlocked,其余locked"]
-    K --> L["initAchievements<br/>14个成就"]
-    D -->|是| M["正常连接"]
-    L --> M
+    E --> F["new sqlJs.Database()"]
+    F --> G["执行建表 SQL"]
+    G --> H["initDefaultSettings<br/>音量=80"]
+    H --> I["initLevelProgress<br/>第1关unlocked,其余locked"]
+    I --> J["initAchievements<br/>14个成就"]
+    J --> K["saveToFile() 持久化"]
+    D -->|是| L["readFileSync 加载"]
+    L --> M["正常连接"]
+    K --> M
     M --> N["就绪"]
 
     style E fill:#5a3d2b,color:#ffffff
-    style I fill:#3d5a3d,color:#ffffff
+    style G fill:#3d5a3d,color:#ffffff
     style N fill:#4a7a4a,color:#ffffff
 ```
 
@@ -476,15 +476,14 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["npm install"] --> B["electron-rebuild<br/>重建 better-sqlite3"]
-    B --> C["electron-vite build<br/>编译三端代码"]
-    C --> D["electron-builder<br/>--win --x64"]
-    D --> E["release/win-unpacked/"]
-    E --> F["压缩为 zip 交付"]
+    A["npm install"] --> B["electron-vite build<br/>编译三端代码"]
+    B --> C["electron-builder<br/>--win --x64"]
+    C --> D["release/win-unpacked/"]
+    D --> E["压缩为 zip 交付"]
 
     style B fill:#3d5a3d,color:#ffffff
-    style D fill:#5a3d2b,color:#ffffff
-    style F fill:#4a7a4a,color:#ffffff
+    style C fill:#5a3d2b,color:#ffffff
+    style E fill:#4a7a4a,color:#ffffff
 ```
 
 ### 10.2 关键配置
@@ -494,8 +493,8 @@ flowchart LR
   "target": [{ "target": "dir", "arch": ["x64"] }],
   "extraResources": [
     {
-      "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
-      "to": "native/better_sqlite3.node"
+      "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+      "to": "native/sql-wasm.wasm"
     }
   ],
   "win": {
@@ -505,18 +504,20 @@ flowchart LR
 ```
 
 - `target: dir` → 输出文件夹而非安装包
-- `extraResources` → 原生模块单独抽出，避免 asar 压原生模块出问题
+- `extraResources` → sql.js WASM 文件单独抽出，不作为 asar 的一部分
 - `signAndEditExecutable: false` → 跳过代码签名（解压版无需签名，且避免 Windows 符号链接权限问题）
 
-### 10.3 nativeBinding 加载逻辑
+### 10.3 sql.js WASM 加载逻辑
 
 ```typescript
-// 打包后：resources/native/better_sqlite3.node
-if (app.isPackaged) {
-  options.nativeBinding = path.join(process.resourcesPath, 'native', 'better_sqlite3.node')
+// 打包后：resources/native/sql-wasm.wasm
+const isPackaged = app.isPackaged
+if (isPackaged) {
+  const wasmPath = path.join(process.resourcesPath, 'native', 'sql-wasm.wasm')
+  sqlJs = await initSqlJs({ locateFile: () => wasmPath })
+} else {
+  sqlJs = await initSqlJs()
 }
-// 开发环境：不传，走默认查找
-db = new Database(dbPath, options)
 ```
 
 ### 10.4 零依赖保证
@@ -525,7 +526,7 @@ db = new Database(dbPath, options)
 |---|---|---|
 | Node.js 运行时 | Electron 内置 | 不需系统安装 |
 | Chromium 浏览器 | Electron 内置 | 不需系统安装 |
-| SQLite 原生模块 | 随包附带 | `resources/native/` |
+| SQLite 数据库 | 随包附带 | `resources/native/sql-wasm.wasm`（纯 JS，无需原生编译） |
 | 字体 | 系统默认 | PingFang/YaHei |
 | 图片素材 | Emoji | 无需图片文件 |
 | 音频文件 | 可选 | 缺失时 Web Audio API 程序化生成回退 |
@@ -1074,3 +1075,194 @@ sequenceDiagram
 | `audio/manager.ts` | loadHowl 添加 file:// URL 转换，确保 Howler 正确加载本地文件 |
 | `audio/tone-generator.ts` | 保留作为文件缺失时的程序化回退 |
 | `resources/README.md` | 更新音频来源与许可说明，添加替代音效说明 |
+
+---
+
+## 十七、v6 改动：sql.js 迁移 + 点击失效修复（2026-07-23）
+
+### 17.1 改动总览
+
+针对两个关键问题进行了修复：
+1. **数据库保存失败**：`better-sqlite3` 原生模块与 Electron 28 ABI 版本不兼容，迁移到纯 JavaScript 的 `sql.js`
+2. **点击失效 Bug**：`getCoveringTiles` 未排除 `inSlot` 的 tile，导致槽位中的 tile 仍被认为是覆盖者
+
+```mermaid
+flowchart LR
+    subgraph DB["数据库迁移"]
+        D1["better-sqlite3<br/>原生模块 ABI 不兼容"]
+        D2["sql.js<br/>纯 JavaScript 无需编译"]
+        D3["DbWrapper + StmtWrapper<br/>API 兼容包装"]
+        D4["saveToFile() 持久化<br/>每次写操作后自动保存"]
+    end
+
+    subgraph Bug["点击失效修复"]
+        B1["getCoveringTiles<br/>只检查 removed"]
+        B2["添加 !t.inSlot 过滤<br/>槽位 tile 不算覆盖者"]
+        B3["canPick 逻辑修复<br/>视觉与逻辑一致性"]
+    end
+
+    D1 --> D2
+    D2 --> D3
+    D3 --> D4
+
+    B1 --> B2
+    B2 --> B3
+
+    style D2 fill:#2d5a2d,color:#fff
+    style B2 fill:#2d5a2d,color:#fff
+```
+
+### 17.2 sql.js 迁移详情
+
+**问题根因**：系统 Node.js 22 编译的 `better-sqlite3`（NODE_MODULE_VERSION 127）与 Electron 28（v119）不兼容。`electron-rebuild` 编译后虽然能加载，但 `new Database()` 报 "unable to open database file"，无法创建数据库文件。
+
+**解决方案**：迁移到 `sql.js`（纯 JavaScript SQLite 实现，基于 WASM）。
+
+**关键改动**：
+
+```mermaid
+flowchart TB
+    subgraph 数据层["数据层改动"]
+        A["initDB() 改为异步<br/>await initSqlJs()"]
+        B["DbWrapper 包装类<br/>（命名参数 → 位置参数）"]
+        C["StmtWrapper 包装类<br/>prepare/run/get/all"]
+        D["事务支持<br/>db.transaction()"]
+        E["saveToFile() 持久化<br/>export → Buffer → writeFile"]
+    end
+
+    subgraph 打包["打包配置"]
+        F["移除 better-sqlite3<br/>移除 @electron/rebuild"]
+        G["添加 sql.js 依赖"]
+        H["extraResources<br/>sql-wasm.wasm"]
+    end
+
+    style A fill:#3d5a3d,color:#fff
+    style E fill:#5a3d2b,color:#fff
+    style H fill:#4a3d7a,color:#fff
+```
+
+**DB 路径策略**：
+- 开发模式：项目根目录 `data/` 文件夹
+- 打包模式：`app.getPath('userData')`（`%APPDATA%\BeastGame\`）
+
+### 17.3 点击失效修复
+
+**问题根因**：`getCoveringTiles` 过滤条件为 `!t.removed`，未排除 `inSlot` 的 tile。当槽位中已有相同动物的 tile（如 dog），该 tile 虽然 `inSlot=true` 但 `removed=false`，仍被判定为 "覆盖者"，导致场上同名 tile 无法点击。
+
+**修复**：在 `getCoveringTiles` 过滤条件中添加 `!t.inSlot`：
+
+```typescript
+// 修复前
+.filter((t): t is Tile => !!t && !t.removed)
+
+// 修复后
+.filter((t): t is Tile => !!t && !t.removed && !t.inSlot)
+```
+
+**连带清理**：
+- 移除所有 debug 日志（`console.log('[Tile]', ...)` 等）
+- 关闭 DevTools（移除 `devTools: true` 和 `openDevTools()`）
+
+### 17.4 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/main/db/index.ts` | 完全重写：sql.js 初始化、DbWrapper/StmtWrapper 包装类、saveToFile() 持久化 |
+| `src/main/db/repository.ts` | 每次写操作后调用 `saveDb()` 持久化 |
+| `src/main/index.ts` | `initDB()` 改为 `await initDB()`，移除 DevTools |
+| `src/game/matcher.ts` | `getCoveringTiles` 过滤条件添加 `!t.inSlot`，清理 debug 日志 |
+| `src/game/engine.ts` | 清理 debug 日志 |
+| `src/renderer/src/stores/game.ts` | 清理 debug 日志 |
+| `src/renderer/src/components/game/Tile.vue` | 清理 debug 日志 |
+| `src/renderer/src/components/game/TileStack.vue` | 清理 debug 日志 |
+| `electron-builder.json` | 移除 better-sqlite3 配置，添加 sql-wasm.wasm |
+| `package.json` | 移除 better-sqlite3、@electron/rebuild、@types/better-sqlite3，添加 sql.js |
+
+---
+
+## 十八、v7 改动：动物音效模式切换 + 真实音效更新（2026-07-23）⚠️ 已被 v8 替代
+
+> **注意**：v7 的音效模式切换功能已在 v8 中移除。游戏内统一使用温和风铃音效，加载界面装饰动物使用真实动物叫声（点击触发）。此节保留作为历史记录。
+
+### 18.1 改动总览（历史记录）
+
+针对两个用户反馈进行改进：
+1. **动物音效太吵**：添加音效模式切换，支持"真实音效"和"温和音效"两种模式
+2. **新增动物音效不真实**：更新企鹅、狐狸、鹦鹉、火烈鸟、孔雀、熊猫等动物的程序化音效使其更贴近真实叫声
+
+### 18.2 动物真实音效更新详情
+
+| 动物 | 旧版问题 | 新版设计 | 关键技术 |
+|---|---|---|---|
+| 狐狸 (fox) | 单音符滑动，太简单 | 5个短促高频音符交替，模拟 yip-yip-yip | 方波，800→1500Hz 交替，60-80ms 短音 |
+| 企鹅 (penguin) | 3个短促嘎嘎 | 3个中频音符带颤音，模拟 honk-bray 驴叫 | 方波，600→800Hz，6Hz 颤音 |
+| 鹦鹉 (parrot) | 方波滑动 | 锯齿波高频多变，模拟 squawk 刺耳声 | 锯齿波，1000→1600Hz 交替，50-70ms |
+| 孔雀 (peacock) | 简单滑动 | 响亮方波+颤音，模拟 may-aw 猫叫声 | 方波，700→1000→700Hz，4Hz 颤音 |
+| 火烈鸟 (flamingo) | 正弦波优雅 | 方波中频有力，模拟 honk 鹅叫声 | 方波，700→800→900Hz，有力度 |
+| 熊猫 (panda) | 三角波滑动 | 三角波+颤音，模拟 bleat 羊叫声 | 三角波，400→320Hz，8Hz 颤音 |
+
+---
+
+## 十九、v8 改动：统一温和音效 + 删除音效选择（2026-07-23）
+
+### 19.1 改动总览
+
+决定游戏内统一使用温和风铃音效，删除音效模式选择功能：
+
+1. **游戏内统一温和音效**：消除时播放统一风铃音效（`playGentleClickSound()`），不再播放动物叫声
+2. **删除音效选择功能**：移除 Settings.vue 中的「动物音效」设置区域，移除 settings.ts 中的 `animalSoundMode` 状态
+3. **加载界面保留动物音效**：Home.vue 装饰动物点击播放真实动物叫声（`playDecorAnimalSound()`），不受游戏内音效统一影响
+4. **连击音效仅在阈值触发**：`getComboTierCrossed` 检测首次达到 3/5/7/10/15/20 连击时触发对应等级音效
+
+```mermaid
+flowchart TB
+    subgraph GameAudio["游戏内音效（统一温和）"]
+        G1["消除成功"] --> GG["playGentleClickSound()<br/>风铃音色（三角波）"]
+        G2["连击达到阈值"] --> GC["playComboPraise(tier)<br/>6档递增音效"]
+        G3["点击无消除"] --> GS["playSfx('click')"]
+    end
+
+    subgraph DecorAudio["加载界面音效（真实动物）"]
+        D1["点击装饰动物"] --> DG["playDecorAnimalSound(animal)<br/>真实叫声 + 程序化回退"]
+    end
+
+    style GG fill:#2d5a2d,color:#fff
+    style DG fill:#4a3d7a,color:#fff
+```
+
+### 19.2 音效统一架构
+
+```mermaid
+flowchart LR
+    subgraph Tile["Tile.vue"]
+        T1["handleClick"]
+    end
+
+    subgraph Game["game.ts pickTile"]
+        G1["消除成功"] --> G2["getComboTierCrossed"]
+        G2 -->|跨阈值| G3["playComboPraise(tier)"]
+        G2 --> G4["playGentleClickSound()"]
+        G1 -->|未消除| G5["playSfx('click')"]
+    end
+
+    subgraph Home["Home.vue"]
+        H1["handleDecorClick"] --> H2["playDecorAnimalSound(animal)"]
+    end
+
+    T1 --> G1
+    H1 --> H2
+
+    style G4 fill:#2d5a2d,color:#fff
+    style G3 fill:#3d5a3d,color:#fff
+```
+
+### 19.3 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/renderer/src/stores/game.ts` | 消除反馈统一使用 `playGentleClickSound()`；连击音效仅在 `getComboTierCrossed` 返回非空时触发 |
+| `src/renderer/src/stores/settings.ts` | 删除 `animalSoundMode` 状态及相关方法，仅保留 `bgmVolume`/`sfxVolume` |
+| `src/renderer/src/views/Settings.vue` | 删除「动物音效」设置区域（双按钮切换 UI） |
+| `src/renderer/src/audio/manager.ts` | 删除 `AnimalSoundMode` 类型及 `setAnimalSoundMode`/`getAnimalSoundMode` 方法；新增 `playDecorAnimalSound()` 用于加载界面装饰动物 |
+| `src/renderer/src/views/Home.vue` | 装饰动物音效改为点击触发（`playDecorAnimalSound`），不再使用 hover 触发 |
+| `src/main/db/repository.ts` | `DEFAULT_SETTINGS` 删除 `animalSoundMode` 字段 |

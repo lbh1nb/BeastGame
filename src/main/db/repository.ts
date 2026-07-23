@@ -1,7 +1,7 @@
-import { getDb } from './index'
+import { getDb, saveDb } from './index'
 
 // ============================================================================
-// 类型定义（弱类型 any 兼容 better-sqlite3 返回结果，避免与渲染层耦合）
+// 类型定义（弱类型 any 兼容 sql.js 返回结果，避免与渲染层耦合）
 // ============================================================================
 
 export interface GameRecordInput {
@@ -27,7 +27,7 @@ export interface LevelProgressUpdate {
 
 // 默认音量设置（key 用驼峰，与渲染层 settings store 保持一致）
 export const DEFAULT_SETTINGS: Record<string, any> = {
-  bgmVolume: 80,
+  bgmVolume: 60,
   sfxVolume: 80
 }
 
@@ -60,6 +60,7 @@ export function saveGameRecord(record: GameRecordInput): number {
     result: record.result,
     created_at: now
   })
+  saveDb()
   return Number(result.lastInsertRowid)
 }
 
@@ -189,6 +190,7 @@ export function updateProgress(levelId: number, data: LevelProgressUpdate): void
     `UPDATE level_progress SET ${fields.join(', ')} WHERE level_id = ?`
   )
   stmt.run(...params)
+  saveDb()
 }
 
 /**
@@ -203,6 +205,7 @@ export function unlockLevel(levelId: number): void {
      WHERE level_id = ? AND status = 'locked'`
   )
   stmt.run(now, levelId)
+  saveDb()
 }
 
 /**
@@ -254,6 +257,7 @@ export function unlockAchievement(id: string): boolean {
       `INSERT OR REPLACE INTO achievements (id, unlocked, unlocked_at, progress)
        VALUES (?, 1, ?, 0)`
     ).run(id, now)
+    saveDb()
     return true
   }
   if (row.unlocked === 1) {
@@ -263,6 +267,7 @@ export function unlockAchievement(id: string): boolean {
   db.prepare(
     'UPDATE achievements SET unlocked = 1, unlocked_at = ? WHERE id = ?'
   ).run(now, id)
+  saveDb()
   return true
 }
 
@@ -276,6 +281,7 @@ export function updateAchievementProgress(id: string, progress: number): void {
      VALUES (?, 0, NULL, ?)
      ON CONFLICT(id) DO UPDATE SET progress = excluded.progress`
   ).run(id, progress)
+  saveDb()
 }
 
 /**
@@ -338,6 +344,7 @@ export function setSetting(key: string, value: any): void {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`
   )
   stmt.run(key, JSON.stringify(value))
+  saveDb()
 }
 
 /**
@@ -357,6 +364,7 @@ export function resetSettings(): void {
     }
   })
   resetTx()
+  saveDb()
 }
 
 /**
@@ -374,6 +382,7 @@ export function clearAllData(): void {
   // 重新初始化默认数据
   initLevelProgress()
   initAchievements(ACHIEVEMENT_FALLBACK_IDS)
+  saveDb()
 }
 
 /** 成就 ID 列表（与 db/index.ts 的 ACHIEVEMENT_IDS 保持一致） */

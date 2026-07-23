@@ -16,7 +16,7 @@
 - **道具系统**：撤回 / 洗牌 / 提示，每局固定发放 + 综合评分额外奖励
 - **全量统计**：分数 / 连击 / 时长 / 消除数，本地排行榜
 - **成就系统**：闯关成就 + 分数成就，共14个
-- **全套音效**：3种BGM循环 + 13种SFX + 6档连击夸赞音效 + 12种动物特征叫声（全部 Web Audio API 程序化生成，无音频文件依赖）
+- **全套音效**：3种BGM循环 + 13种SFX + 6档连击夸赞音效 + 游戏内统一温和风铃音效 + 加载界面12种动物真实叫声（点击触发）
 - **解压即玩**：无需安装依赖、软件、环境变量，双击 exe 即可运行
 
 ---
@@ -27,7 +27,7 @@
 
 **下载地址**：[GitHub Release v1.0.0](https://github.com/lbh1nb/BeastGame/releases/tag/v1.0.0)
 
-1. 点击上方链接，下载 `BeastGame-portable.zip`（约 129MB）
+1. 点击上方链接，下载 `BeastGame-portable.zip`（约 120MB）
 2. 解压到任意目录
 3. 双击 `BeastGame.exe` 即可运行
 
@@ -48,9 +48,6 @@
 ```bash
 # 安装依赖
 npm install
-
-# 重建原生模块（better-sqlite3 必须针对 Electron ABI 重新编译）
-npx electron-rebuild -f -w better-sqlite3
 
 # 启动开发服务器
 npm run dev
@@ -125,7 +122,7 @@ npm run typecheck
 - **主色**：橙黄 `#ffb84d`
 - **背景**：暖米色 `#fff5e1`
 - **窗口**：竖版 800×1200（手机比例）
-- **动物图案**：12种 Canvas 程序化绘制 **24×24 像素风 Q 萌动物**，每种有独特体型轮廓+配色纹理，悬停弹跳+眨眼+专属特征叫声（羊低频颤音咩叫、鱼水泡声、虎低频长吼、鲸悠长回声等）
+- **动物图案**：12种 Canvas 程序化绘制 **24×24 像素风 Q 萌动物**，每种有独特体型轮廓+配色纹理，悬停弹跳+眨眼；游戏内消除使用统一温和风铃音效，加载界面点击装饰动物可触发真实叫声
 
 ### 章节主题色
 
@@ -212,7 +209,7 @@ beast-game/
 | 渲染层 | Vue 3 + TypeScript | 3.5+ |
 | 状态管理 | Pinia | 2.2+ |
 | 路由 | Vue Router | 4.4+ |
-| 数据库 | better-sqlite3 | 11+ |
+| 数据库 | sql.js（纯 JavaScript SQLite） | 1.14+ |
 | 音效 | Howler.js + Web Audio API | 2.2+ |
 | 打包 | electron-builder | 24+ |
 
@@ -224,20 +221,20 @@ beast-game/
 
 1. **Node.js 运行时**：Electron 自带，不需系统安装
 2. **Chromium 浏览器**：Electron 自带
-3. **SQLite 原生模块**：`better_sqlite3.node` 随包附带（x64 预编译）
-4. **音效**：Web Audio API 程序化生成，无需任何音频文件；图片资源打包进 `resources/`
+3. **SQLite 数据库**：`sql.js`（纯 JavaScript，无需原生模块），WASM 文件随包附带
+4. **音效**：真实音频文件 + Web Audio API 程序化回退；图片资源打包进 `resources/`
 5. **配置文件**：首次启动自动生成到 `%APPDATA%\BeastGame\`
 6. **环境变量**：完全不依赖
 
 ### 打包后目录结构
 
 ```
-BeastGame-x.x.x-win-x64/
+BeastGame-win-unpacked/
 ├── BeastGame.exe                ← 双击运行
 ├── resources/
 │   ├── app.asar                 ← 打包后的代码
 │   ├── native/
-│   │   └── better_sqlite3.node  ← 预编译原生模块
+│   │   └── sql-wasm.wasm        ← SQLite WASM 文件
 │   ├── audio/                   ← 音频文件
 │   └── README.md
 ├── chrome_100_percent.pak       ← Chromium 运行时

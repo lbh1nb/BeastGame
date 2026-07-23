@@ -131,17 +131,15 @@ export const useGameStore = defineStore('game', () => {
           tier: crossedTier,
           combo: cur.combo
         }
-        // 播放对应等级音效
+        // 播放对应等级连击音效（仅在首次达到阈值时触发）
         if (soundEnabled.value) {
           audioManager.playComboPraise(crossedTier)
         }
-      } else if (soundEnabled.value) {
-        // 普通消除音效
-        if (cur.combo >= 2 || prevCombo >= 2) {
-          audioManager.playSfx('combo')
-        } else {
-          audioManager.playSfx('match')
-        }
+      }
+
+      // 2) 消除反馈：统一使用温和风铃音效
+      if (soundEnabled.value) {
+        audioManager.playGentleClickSound()
       }
     } else if (soundEnabled.value) {
       audioManager.playSfx('click')

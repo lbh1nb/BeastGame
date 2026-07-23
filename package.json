@@ -9,7 +9,6 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "build:win": "electron-vite build && electron-builder --win --x64",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "preview": "electron-vite preview",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
@@ -17,15 +16,13 @@
   },
   "dependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
-    "better-sqlite3": "^11.3.0",
     "howler": "^2.2.4",
     "pinia": "^2.2.2",
+    "sql.js": "^1.14.1",
     "vue": "^3.5.0",
     "vue-router": "^4.4.3"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.6.0",
-    "@types/better-sqlite3": "^7.6.11",
     "@types/howler": "^2.2.11",
     "@types/node": "^20.14.10",
     "@vitejs/plugin-vue": "^5.0.5",

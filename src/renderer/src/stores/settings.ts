@@ -7,6 +7,7 @@ import audioManager from '@audio/manager'
  * - 管理背景音乐 / 音效音量（0-100）
  * - 持久化到 SQLite（通过 window.gameAPI.settings）
  * - 修改音量时同步到 AudioManager
+ * - 注意：动物音效已统一为温和风铃音效，不再提供切换选项
  */
 export const useSettingsStore = defineStore('settings', () => {
   /** BGM 音量 0-100 */
@@ -15,7 +16,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const sfxVolume = ref(80)
 
   /** 默认值，重置时使用（与 DB 层 DEFAULT_SETTINGS 保持一致） */
-  const DEFAULT_BGM = 80
+  const DEFAULT_BGM = 60
   const DEFAULT_SFX = 80
 
   /**

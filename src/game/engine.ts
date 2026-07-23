@@ -91,10 +91,10 @@ function makeDefaultConfig(mode: GameMode): LevelConfig {
   const maxSlots = is4 ? 8 : 7
   const tiles = is4 ? 240 : 180
   const layers = 8
-  // 三消用 10 种动物，四消用 8 种动物增加难度
+  // 三消用 12 种动物，四消用 10 种动物增加难度
   const animals: AnimalType[] = is4
-    ? ['sheep', 'chicken', 'cat', 'dog', 'rabbit', 'hamster', 'tiger', 'bear']
-    : ['sheep', 'chicken', 'cat', 'dog', 'rabbit', 'hamster', 'tiger', 'bear', 'fish', 'whale']
+    ? ['sheep', 'pig', 'chicken', 'dog', 'tiger', 'lion', 'bear', 'fox', 'fish', 'whale']
+    : ['sheep', 'pig', 'chicken', 'dog', 'tiger', 'lion', 'bear', 'fox', 'frog', 'elephant', 'fish', 'whale']
   return {
     id: 0,
     chapter: 0,
@@ -283,7 +283,7 @@ export class GameEngine {
   }
 
   /**
-   * 洗牌：打乱场上（未消除且不在槽位）tile 的 animal+variant，
+   * 洗牌：打乱场上（未消除且不在槽位）tile 的 animal，
    * 保持位置、层级不变。仅作排列置换，保证多集不变故仍可解。
    */
   static shuffle(state: GameState): GameState {
@@ -295,11 +295,10 @@ export class GameEngine {
     const prevCombo = next.combo
 
     const boardTiles = next.tiles.filter((t) => !t.removed && !t.inSlot)
-    const pairs = boardTiles.map((t) => ({ animal: t.animal, variant: t.variant }))
-    shuffleArray(pairs)
+    const animals = boardTiles.map((t) => t.animal)
+    shuffleArray(animals)
     boardTiles.forEach((t, i) => {
-      t.animal = pairs[i].animal
-      t.variant = pairs[i].variant
+      t.animal = animals[i]
     })
 
     next.history.push({

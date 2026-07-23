@@ -172,8 +172,8 @@ onMounted(() => {
   timer = window.setInterval(() => {
     now.value = Date.now()
   }, 1000)
-  // 进入游戏播放游戏 BGM
-  audioManager.playBgm('game').catch(() => {
+  // 进入游戏播放轻快 BGM（与加载界面一致）
+  audioManager.playBgm('home').catch(() => {
     // 音频加载失败不影响游戏运行
   })
 })

@@ -7,7 +7,7 @@
     <div class="cloud cloud--1" />
     <div class="cloud cloud--2" />
 
-    <!-- 装饰小动物（散布在空旷区域，浮动+悬停弹跳+动物音效） -->
+    <!-- 装饰小动物（散布在空旷区域，浮动+悬停弹跳+点击动物音效） -->
     <div
       v-for="(a, i) in decorAnimals"
       :key="i"
@@ -20,10 +20,11 @@
         animationDelay: a.delay,
         animationDuration: a.dur
       }"
-      @mouseenter="handleDecorHover(a)"
+      @mouseenter="a.hover = true"
       @mouseleave="a.hover = false"
+      @click="handleDecorClick(a)"
     >
-      <PixelAnimal :animal="a.animal" :variant="a.variant" :hover="a.hover" :size="a.size" />
+      <PixelAnimal :animal="a.animal" :hover="a.hover" :size="a.size" />
     </div>
 
     <!-- 标题区 -->
@@ -71,10 +72,9 @@ import type { AnimalType } from '@game/types'
 
 const router = useRouter()
 
-/** 装饰小动物配置（散布在空旷区域） */
+/** 装饰小动物配置（散布在空旷区域，8只色相分散的动物） */
 interface DecorAnimal {
   animal: AnimalType
-  variant: 0 | 1
   size: number
   top?: string
   left?: string
@@ -87,17 +87,17 @@ interface DecorAnimal {
 
 const decorAnimals = reactive<DecorAnimal[]>([
   // 标题两侧
-  { animal: 'sheep', variant: 0, size: 56, top: '10%', left: '8%', delay: '0s', dur: '5s', hover: false },
-  { animal: 'cat', variant: 1, size: 52, top: '12%', right: '8%', delay: '1s', dur: '5.5s', hover: false },
+  { animal: 'sheep', size: 56, top: '10%', left: '8%', delay: '0s', dur: '5s', hover: false },
+  { animal: 'pig', size: 52, top: '12%', right: '8%', delay: '1s', dur: '5.5s', hover: false },
   // 中部按钮左右
-  { animal: 'chicken', variant: 0, size: 48, top: '38%', left: '6%', delay: '0.5s', dur: '4.5s', hover: false },
-  { animal: 'rabbit', variant: 1, size: 50, top: '40%', right: '6%', delay: '1.5s', dur: '5s', hover: false },
+  { animal: 'chicken', size: 48, top: '38%', left: '6%', delay: '0.5s', dur: '4.5s', hover: false },
+  { animal: 'fox', size: 50, top: '40%', right: '6%', delay: '1.5s', dur: '5s', hover: false },
   // 中下按钮左右
-  { animal: 'dog', variant: 0, size: 54, top: '55%', left: '10%', delay: '2s', dur: '6s', hover: false },
-  { animal: 'hamster', variant: 1, size: 46, top: '57%', right: '10%', delay: '0.8s', dur: '4.8s', hover: false },
+  { animal: 'dog', size: 54, top: '55%', left: '10%', delay: '2s', dur: '6s', hover: false },
+  { animal: 'frog', size: 46, top: '57%', right: '10%', delay: '0.8s', dur: '4.8s', hover: false },
   // 底部按钮上方
-  { animal: 'tiger', variant: 0, size: 58, bottom: '24%', left: '14%', delay: '1.2s', dur: '5.2s', hover: false },
-  { animal: 'bear', variant: 1, size: 56, bottom: '26%', right: '14%', delay: '2.5s', dur: '5.8s', hover: false }
+  { animal: 'tiger', size: 58, bottom: '24%', left: '14%', delay: '1.2s', dur: '5.2s', hover: false },
+  { animal: 'penguin', size: 56, bottom: '26%', right: '14%', delay: '2.5s', dur: '5.8s', hover: false }
 ])
 
 onMounted(() => {
@@ -110,10 +110,9 @@ onUnmounted(() => {
   audioManager.stopBgm()
 })
 
-/** 装饰动物悬停：弹跳眨眼 + 播放动物音效 */
-function handleDecorHover(a: DecorAnimal): void {
-  a.hover = true
-  audioManager.playAnimalSound(a.animal)
+/** 装饰动物点击：播放真实动物音效（不受温和模式影响），悬停弹跳眨眼由 mouseenter 驱动 */
+function handleDecorClick(a: DecorAnimal): void {
+  audioManager.playDecorAnimalSound(a.animal)
 }
 
 function go(path: string): void {

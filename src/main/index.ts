@@ -23,8 +23,8 @@ function createWindow(): BrowserWindow {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+      }
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -40,9 +40,9 @@ function createWindow(): BrowserWindow {
   return mainWindow
 }
 
-app.whenReady().then(() => {
-  // 初始化数据库
-  initDB()
+app.whenReady().then(async () => {
+  // 初始化数据库（异步）
+  await initDB()
 
   // 注册所有 IPC 处理器
   registerScoreIpc()

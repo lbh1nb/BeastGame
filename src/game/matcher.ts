@@ -20,7 +20,7 @@ export function getCoveringTiles(state: GameState, tileId: number): Tile[] {
   if (!tile) return []
   return tile.coveredBy
     .map((id) => getTileById(state, id))
-    .filter((t): t is Tile => !!t && !t.removed)
+    .filter((t): t is Tile => !!t && !t.removed && !t.inSlot)
 }
 
 /**
@@ -37,17 +37,17 @@ export function canPick(state: GameState, tileId: number): boolean {
 
 /**
  * 在槽位中查找可消除的组：
- * 找到 matchCount 个相同 animal+variant 的 tile，返回其 id 数组；否则 null。
+ * 找到 matchCount 个相同 animal 的 tile，返回其 id 数组；否则 null。
  * 命中后即返回第一组（消除按出现顺序）。
  */
 export function findMatchInSlot(state: GameState): number[] | null {
   const { matchCount } = state
-  // 按 (animal|variant) 分组，保留槽位顺序
+  // 按 animal 分组，保留槽位顺序
   const groups = new Map<string, Tile[]>()
   for (const slot of state.slots) {
     const t = slot.tile
     if (!t) continue
-    const key = `${t.animal}|${t.variant}`
+    const key = t.animal
     const arr = groups.get(key)
     if (arr) arr.push(t)
     else groups.set(key, [t])
@@ -62,7 +62,7 @@ export function findMatchInSlot(state: GameState): number[] | null {
 
 /**
  * 返回场上所有"可被收集完成"的 tile 组：
- * 即当前可点击且 animal+variant 相同的 matchCount 个 tile。
+ * 即当前可点击且 animal 相同的 matchCount 个 tile。
  * 用于提示与洗牌判定。
  */
 export function findAllMatchable(state: GameState): number[][] {
@@ -72,7 +72,7 @@ export function findAllMatchable(state: GameState): number[][] {
 
   const groups = new Map<string, Tile[]>()
   for (const t of pickable) {
-    const key = `${t.animal}|${t.variant}`
+    const key = t.animal
     const arr = groups.get(key)
     if (arr) arr.push(t)
     else groups.set(key, [t])
@@ -90,27 +90,13 @@ export function findAllMatchable(state: GameState): number[][] {
 
 /**
  * 返回一对提示 tile id（场上可点击且动物相同的 2 个）。
- * 优先返回 animal+variant 完全相同的对（可直接凑组），其次相同动物不同变体。
+ * 优先返回 animal 相同的对（可直接凑组）。
  * 找不到返回 null。
  */
 export function findHint(state: GameState): number[] | null {
   const pickable = state.tiles.filter((t) => canPick(state, t.id))
 
-  // 第一轮：找 animal+variant 完全相同的对
-  const sameKey = new Map<string, Tile[]>()
-  for (const t of pickable) {
-    const key = `${t.animal}|${t.variant}`
-    const arr = sameKey.get(key)
-    if (arr) arr.push(t)
-    else sameKey.set(key, [t])
-  }
-  for (const arr of sameKey.values()) {
-    if (arr.length >= 2) {
-      return [arr[0].id, arr[1].id]
-    }
-  }
-
-  // 第二轮：退而求其次，相同动物不同变体
+  // 找相同动物的可点击对
   const sameAnimal = new Map<string, Tile[]>()
   for (const t of pickable) {
     const arr = sameAnimal.get(t.animal)

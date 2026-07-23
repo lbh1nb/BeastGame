@@ -10,10 +10,23 @@
  */
 import type { AnimalType, LevelConfig, Tile } from './types'
 
-/** animal × variant 组合 */
+/**
+ * 布局常量（generator 与 TileStack 共享，保证逻辑覆盖判断与视觉一致）
+ * 半整数网格坐标实现 2×2 中心堆叠：
+ *  - 偶数层：整数坐标 (0, 1, 2, ...)
+ *  - 奇数层：半整数坐标 (0.5, 1.5, 2.5, ...)
+ *  - 覆盖判断：|x1-x2| < 1 且 |y1-y2| < 1（网格距离小于1格）
+ *  - 渲染直接用 x * CELL_W, y * CELL_H，不需要像素偏移
+ *  - 视觉与逻辑 100% 一致
+ */
+export const CELL_W = 56
+export const CELL_H = 60
+export const TILE_W = 52
+export const TILE_H = 56
+
+/** animal 组合（v4：去掉 variant，每种动物唯一模型） */
 interface Combo {
   animal: AnimalType
-  variant: 0 | 1
 }
 
 /** Fisher-Yates 洗牌（原地） */
@@ -31,15 +44,16 @@ function randInt(max: number): number {
 }
 
 /**
- * 把总图案数分配到各层（下层多、上层少，呈金字塔）
- * 下层约占 1/n * 1.2，上层递减，保证下层可消牌多
+ * 把总图案数分配到各层（平缓金字塔，层次饱满）
+ * 下层略多、上层略少，但差距不大，保证每层都有足够牌数
+ * 权重公式 (layers-i)*0.5+1：第0层权重最高，最后一层也有基础权重1.5
+ * 例如11层：旧权重[11,10,...,1]→新权重[6.5,6.0,...,1.5]，上层牌数翻倍
  */
 function distributeTilesAcrossLayers(total: number, layers: number): number[] {
-  // 权重：下层权重高，上层权重低
   const weights: number[] = []
   for (let i = 0; i < layers; i++) {
-    // 下层权重 = layers - i（第0层最高）
-    weights.push(layers - i)
+    // 平缓金字塔：下层权重略高，上层不会太少
+    weights.push((layers - i) * 0.5 + 1)
   }
   const weightSum = weights.reduce((a, b) => a + b, 0)
 
@@ -57,22 +71,32 @@ function distributeTilesAcrossLayers(total: number, layers: number): number[] {
 }
 
 /**
- * 在一层内选取 count 个网格坐标。
+ * 在一层内选取 count 个网格坐标（紧凑分布版）。
+ * - 优先选择靠近中心的格子（前75%区域），让牌集中不空旷
  * - count <= rows*cols 时尽量不重复（每格最多 1 个）
  * - 超过则允许同格叠加
  */
 function pickCells(count: number, rows: number, cols: number): { x: number; y: number }[] {
   const total = rows * cols
   if (count <= total) {
-    const all: { x: number; y: number }[] = []
+    // 计算每个格子到网格中心的距离
+    const cx = (cols - 1) / 2
+    const cy = (rows - 1) / 2
+    const all: { x: number; y: number; d: number }[] = []
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        all.push({ x, y })
+        all.push({ x, y, d: Math.hypot(x - cx, y - cy) })
       }
     }
-    shuffle(all)
-    return all.slice(0, count)
+    // 按到中心距离排序，近的优先
+    all.sort((a, b) => a.d - b.d)
+    // 在前 75% 的候选中随机选择（既紧凑又有变化）
+    const cutoff = Math.max(count, Math.floor(all.length * 0.75))
+    const candidates = all.slice(0, cutoff).map(({ x, y }) => ({ x, y }))
+    shuffle(candidates)
+    return candidates.slice(0, count)
   }
+  // 超过网格容量则允许同格叠加
   const result: { x: number; y: number }[] = []
   for (let i = 0; i < count; i++) {
     result.push({ x: randInt(cols), y: randInt(rows) })
@@ -81,19 +105,17 @@ function pickCells(count: number, rows: number, cols: number): { x: number; y: n
 }
 
 /**
- * 构造 animal×variant 组合列表，保证每个组合数量为 matchCount 的倍数。
+ * 构造 animal 列表，保证每种动物数量为 matchCount 的倍数。
  * 总数恰等于 totalTiles。
  */
-function buildAnimalVariantList(
+function buildAnimalList(
   animals: AnimalType[],
   totalTiles: number,
   matchCount: number
 ): Combo[] {
   const totalGroups = totalTiles / matchCount
 
-  const allCombos: Combo[] = animals.flatMap((animal) =>
-    ([0, 1] as const).map<Combo>((variant) => ({ animal, variant }))
-  )
+  const allCombos: Combo[] = animals.map((animal) => ({ animal }))
 
   let usedCombos: Combo[]
   if (totalGroups <= allCombos.length) {
@@ -118,7 +140,7 @@ function buildAnimalVariantList(
  * 关卡布局生成器：根据 config 生成 tile 数组。
  *
  * 全屏单大堆算法：
- *  1. 构造 animal×variant 列表，每种组合数量为 matchCount 的倍数，总和 = config.tiles
+ *  1. 构造 animal 列表，每种动物数量为 matchCount 的倍数，总和 = config.tiles
  *  2. 按 config.layers 层分配牌数（下层多上层少）
  *  3. 每层在 rows×cols 大网格中随机放置
  *  4. 计算 coveredBy：上层 tile 与本 tile 的 (x,y) 距离 ≤ 0.5 即视为覆盖
@@ -129,8 +151,8 @@ function buildAnimalVariantList(
 export function generateTiles(config: LevelConfig): Tile[] {
   const { tiles, matchCount, animals, layers, rows, cols } = config
 
-  // 1. 动物+变体列表（保证可消完）
-  const comboList = shuffle(buildAnimalVariantList(animals, tiles, matchCount))
+  // 1. 动物列表（保证可消完）
+  const comboList = shuffle(buildAnimalList(animals, tiles, matchCount))
 
   const tilesArr: Tile[] = []
   const comboCursor = { idx: 0 }
@@ -139,18 +161,24 @@ export function generateTiles(config: LevelConfig): Tile[] {
   // 2. 按层分配牌数
   const countsPerLayer = distributeTilesAcrossLayers(tiles, layers)
 
-  // 3. 每层在大网格中随机放置
+  // 3. 每层独立紧凑选位
+  // 偶数层：整数坐标 (0, 1, 2, ...)
+  // 奇数层：半整数坐标 (0.5, 1.5, 2.5, ...) 实现 2×2 中心堆叠
   for (let layer = 0; layer < layers; layer++) {
     const count = countsPerLayer[layer]
     const cells = pickCells(count, rows, cols)
+    const isOddLayer = layer % 2 === 1
     for (let z = 0; z < cells.length; z++) {
-      const { x, y } = cells[z]
+      let { x, y } = cells[z]
+      if (isOddLayer) {
+        x += 0.5
+        y += 0.5
+      }
       const combo = comboList[comboCursor.idx++]
       tilesArr.push({
         id: nextId.val++,
         animal: combo.animal,
-        variant: combo.variant,
-        region: 0,  // v3 全部为单区域
+        region: 0,
         layer,
         x,
         y,
@@ -163,14 +191,12 @@ export function generateTiles(config: LevelConfig): Tile[] {
     }
   }
 
-  // 4. 计算 coveredBy：上层覆盖下层（距离 ≤ 0.5）
+  // 4. 计算 coveredBy：网格距离 < 1 即覆盖
+  // |x1-x2| < 1 且 |y1-y2| < 1  → 同格或相邻半格
+  // 无需像素计算，视觉与逻辑 100% 一致
   for (const t of tilesArr) {
     t.coveredBy = tilesArr
-      .filter(
-        (u) =>
-          u.layer > t.layer &&
-          Math.hypot(u.x - t.x, u.y - t.y) <= 0.5
-      )
+      .filter((u) => u.layer > t.layer && Math.abs(u.x - t.x) < 1 && Math.abs(u.y - t.y) < 1)
       .map((u) => u.id)
   }
 

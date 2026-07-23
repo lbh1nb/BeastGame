@@ -3,14 +3,22 @@
  * 纯逻辑层，不依赖 vue / electron
  */
 
-/** 动物类型，按章节分组 */
+/**
+ * 20 种动物类型（v4：扁平方块像素图版）
+ * 主色均匀分布色环，每种动物唯一模型无变种
+ * 按章节分组：
+ *  第1章 家畜：sheep / pig / chicken / dog
+ *  第2章 野生：tiger / lion / bear / fox
+ *  第3章 森林：frog / crocodile / elephant / panda
+ *  第4章 鸟类：flamingo / peacock / penguin / parrot
+ *  第5章 海洋：fish / whale / octopus / jellyfish
+ */
 export type AnimalType =
-  | 'sheep' | 'chicken'        // 第1章 家畜
-  | 'cat' | 'dog'              // 第2章 宠物
-  | 'rabbit' | 'hamster'       // 第3章 小动物
-  | 'tiger' | 'bear'           // 第4章 野生
-  | 'fish' | 'whale'           // 第5章 海洋
-  | 'duck' | 'goose'           // 第6章 鸟类
+  | 'sheep' | 'pig' | 'chicken' | 'dog'        // 第1章 家畜
+  | 'tiger' | 'lion' | 'bear' | 'fox'          // 第2章 野生
+  | 'frog' | 'crocodile' | 'elephant' | 'panda' // 第3章 森林
+  | 'flamingo' | 'peacock' | 'penguin' | 'parrot' // 第4章 鸟类
+  | 'fish' | 'whale' | 'octopus' | 'jellyfish' // 第5章 海洋
 
 /** 游戏模式：3消 / 4消 / 闯关 */
 export type GameMode = 'classic3' | 'classic4' | 'level'
@@ -25,7 +33,6 @@ export type PropType = 'undo' | 'shuffle' | 'hint'
 export interface Tile {
   id: number
   animal: AnimalType
-  variant: 0 | 1           // 2个变体（同一动物的两种样式）
   region: number            // 所属区域索引（0=第一个区域），多区域布局用
   layer: number             // 层级，0=最底层
   x: number                 // 网格x坐标（区域内坐标）
