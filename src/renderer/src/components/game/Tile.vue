@@ -17,6 +17,13 @@
       :hover="isHover"
       :size="animalSize"
     />
+    <canvas
+      v-if="mechanicType && mechanicStuck && !isCovered && !tile.removed"
+      ref="overlayCanvas"
+      class="tile-overlay-canvas"
+      :width="52"
+      :height="56"
+    />
   </div>
 </template>
 
@@ -28,10 +35,10 @@
  * - 点击音效统一由 game.ts 管理（消除/连击/温和）
  * - 被覆盖时半透明且不可点击；提示时金色边框闪烁
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect, nextTick } from 'vue'
 import type { Tile as TileType } from '@game/types'
 import PixelAnimal from './PixelAnimal.vue'
-import { getAnimalBgColor } from '@utils/pixel-animal'
+import { getAnimalBgColor, drawMechanicOverlay } from '@utils/pixel-animal'
 
 interface Props {
   tile: TileType
@@ -56,6 +63,23 @@ const animalSize = 46
 
 /** 背景色 */
 const bgColor = computed(() => getAnimalBgColor(props.tile.animal))
+
+/** mechanic overlay 相关 */
+const overlayCanvas = ref<HTMLCanvasElement | null>(null)
+const mechanicType = computed(() => props.tile.mechanicState?.type ?? null)
+const mechanicStuck = computed(() => (props.tile.mechanicState?.stuck ?? 0) > 0)
+
+watchEffect(() => {
+  if (!overlayCanvas.value || !mechanicType.value || !mechanicStuck.value) return
+  nextTick(() => {
+    const canvas = overlayCanvas.value
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    drawMechanicOverlay(ctx, mechanicType.value!, Math.min(canvas.width, canvas.height))
+  })
+})
 
 function handleClick(): void {
   if (props.isCovered) return
@@ -152,5 +176,14 @@ function handleMouseLeave(): void {
 .tile-leave-to {
   opacity: 0;
   transform: scale(0.4) rotate(15deg);
+}
+
+.tile-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 10px;
 }
 </style>

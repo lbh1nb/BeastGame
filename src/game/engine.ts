@@ -20,7 +20,8 @@ import { generateTiles } from './generator'
 import {
   canPick,
   findHint,
-  findMatchInSlot
+  findMatchInSlot,
+  getCoveringTiles
 } from './matcher'
 import {
   calcMatchScore,
@@ -109,6 +110,47 @@ function makeDefaultConfig(mode: GameMode): LevelConfig {
   }
 }
 
+/**
+ * 尝试解析场上 1 个闹脾气牌 + 1 个贪睡牌。
+ * 每次消除成功后调用，优先选未被覆盖的牌（用户可见），确保视觉反馈明确。
+ * @returns 被解析的机制类型列表（供音效使用）
+ */
+function resolveMechanics(state: GameState): string[] {
+  const resolved: string[] = []
+
+  function resolveOne(type: 'moody' | 'sleepy'): boolean {
+    const candidates: number[] = []       // 未被覆盖的 tile indices
+    const coveredCandidates: number[] = [] // 被覆盖的 tile indices
+
+    for (let i = 0; i < state.tiles.length; i++) {
+      const t = state.tiles[i]
+      if (t.removed || t.inSlot) continue
+      const ms = t.mechanicState
+      if (!ms || ms.type !== type || ms.stuck <= 0) continue
+      // 使用 getCoveringTiles（与 TileStack coveredSet 完全一致）
+      if (getCoveringTiles(state, t.id).length > 0) {
+        coveredCandidates.push(i)
+      } else {
+        candidates.push(i)
+      }
+    }
+
+    // 优先选未被覆盖的（用户可见）
+    const targetIdx = candidates.length > 0 ? candidates[0] : coveredCandidates[0]
+    if (targetIdx === undefined) return false
+
+    const t = state.tiles[targetIdx]
+    t.mechanicState = { type, stuck: 0, matchedCount: 0 }
+    resolved.push(type)
+    return true
+  }
+
+  resolveOne('moody')
+  resolveOne('sleepy')
+
+  return resolved
+}
+
 export class GameEngine {
   /** 初始化新局 */
   static init(mode: GameMode, levelConfig?: LevelConfig): GameState {
@@ -144,7 +186,9 @@ export class GameEngine {
       history: [],
       status: 'playing',
       hintTileIds: [],
-      lastMatchedTileIds: []
+      lastMatchedTileIds: [],
+      clickRemaining: config.mechanic?.clickLimit ?? -1,
+      lastResolvedMechanics: []
     }
   }
 
@@ -157,9 +201,38 @@ export class GameEngine {
     tileId: number
   ): { state: GameState; matched: boolean; picked: boolean } {
     if (state.status !== 'playing') return { state, matched: false, picked: false }
+
+    // 点击限制：0=不可点击，-1=无限制
+    if (state.clickRemaining === 0) return { state, matched: false, picked: false }
+
+    // 机制前置判定
+    const tile = state.tiles.find((t) => t.id === tileId)
+    if (tile?.mechanicState) {
+      const ms = tile.mechanicState
+      if (ms.type === 'moody') {
+        // 闹脾气：stuck 未清除则不能点
+        if (ms.stuck > 0) return { state, matched: false, picked: false }
+      } else if (ms.type === 'sleepy') {
+        // 贪睡：stuck 未清除则不能点
+        if (ms.stuck > 0) return { state, matched: false, picked: false }
+      } else if ((ms.type === 'vine' || ms.type === 'bubble') && ms.stuck > 0) {
+        // 藤蔓/气泡：解除 stuck，消耗一次点击
+        const next = cloneState(state)
+        const vt = next.tiles.find((t) => t.id === tileId)!
+        vt.mechanicState!.stuck = 0
+        if (next.clickRemaining > 0) next.clickRemaining -= 1
+        return { state: next, matched: false, picked: false }
+      }
+      // hidden: 点击翻开即可，不阻止后续逻辑
+    }
+
     if (!canPick(state, tileId)) return { state, matched: false, picked: false }
 
     const next = cloneState(state)
+
+    // 消耗点击次数
+    if (next.clickRemaining > 0) next.clickRemaining -= 1
+
     const prevSlots = snapshotSlots(next)
     const prevScore = next.score
     const prevCombo = next.combo
@@ -167,13 +240,16 @@ export class GameEngine {
     // 放入第一个空槽位
     const slotIdx = next.slots.findIndex((s) => s.tile === null)
     if (slotIdx === -1) {
-      // 无空槽位（理论上不会到这里，因为未满才会进入；防御性返回）
       return { state, matched: false, picked: false }
     }
-    const tile = next.tiles.find((t) => t.id === tileId)!
-    tile.inSlot = true
-    tile.slotIndex = slotIdx
-    next.slots[slotIdx].tile = tile
+    const pt = next.tiles.find((t) => t.id === tileId)!
+    // hidden: 翻开后清除机制状态
+    if (pt.mechanicState?.type === 'hidden') {
+      delete pt.mechanicState
+    }
+    pt.inSlot = true
+    pt.slotIndex = slotIdx
+    next.slots[slotIdx].tile = pt
 
     // 清掉提示与上次消除高亮
     next.hintTileIds = []
@@ -203,6 +279,8 @@ export class GameEngine {
           t.removed = true
           t.inSlot = false
           t.slotIndex = -1
+          // 清除已消除 tile 的机制状态
+          delete t.mechanicState
         }
       }
       // 清空对应槽位
@@ -214,6 +292,16 @@ export class GameEngine {
       next.tilesRemoved += next.matchCount
       next.lastMatchedTileIds = matchIds
 
+      // 消除后尝试解析场上机制牌
+      const resolvedMechanics = resolveMechanics(next)
+      next.lastResolvedMechanics = resolvedMechanics
+
+      // 返还点击次数
+      const refund = state.config.mechanic?.clickRefund ?? 0
+      if (refund > 0 && next.clickRemaining >= 0) {
+        next.clickRemaining += refund
+      }
+
       next.history.push({
         action: 'match',
         tileIds: matchIds,
@@ -222,15 +310,12 @@ export class GameEngine {
         prevCombo: matchPrevCombo
       })
     }
-    // 未命中（攒牌过程）：combo 保持不清零
-    // 连击仅在以下情况清零：洗牌 / 失败 / 重开
 
     // 胜负判定
     if (next.tiles.every((t) => t.removed)) {
       next.status = 'won'
       next.endTime = Date.now()
     } else if (next.slots.every((s) => s.tile !== null)) {
-      // 槽位已满且无消除（有消除上面已处理）→ 失败
       next.status = 'lost'
       next.endTime = Date.now()
     }

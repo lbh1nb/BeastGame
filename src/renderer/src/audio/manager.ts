@@ -109,7 +109,18 @@ const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   fish: 'animal_fish.mp3',
   whale: 'animal_whale.mp3',
   octopus: 'animal_octopus.mp3',
-  jellyfish: 'animal_jellyfish.mp3'
+  jellyfish: 'animal_jellyfish.mp3',
+  // 新增动物
+  horse: 'animal_horse.mp3',
+  cow: 'animal_cow.mp3',
+  wolf: 'animal_wolf.mp3',
+  eagle: 'animal_eagle.mp3',
+  monkey: 'animal_monkey.mp3',
+  deer: 'animal_deer.mp3',
+  owl: 'animal_owl.mp3',
+  swan: 'animal_swan.mp3',
+  dolphin: 'animal_dolphin.mp3',
+  turtle: 'animal_turtle.mp3'
 }
 
 /** 支持的 BGM 名（可扩展） */

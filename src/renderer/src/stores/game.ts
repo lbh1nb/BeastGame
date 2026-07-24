@@ -103,41 +103,45 @@ export const useGameStore = defineStore('game', () => {
     const prevMatchTotal = s.matchCount_total
     const prevCombo = s.combo
 
+    let picked = false
     try {
-      // 引擎 pickTile 返回 { state, matched, picked }，仅当 picked 且 state 变化时应用
       const result = GameEngine.pickTile(s, tileId)
-      if (result.picked && result.state !== s) {
+      // 状态变化时始终应用（包括 pick / vine-bubble 解除等）
+      if (result.state !== s) {
         applyState(result.state)
-      } else {
-        return
       }
+      picked = result.picked
     } catch (e) {
       console.error('[game] pickTile 失败', e)
       return
     }
 
+    // 非 pick 操作（如藤蔓/气泡解除、被挡住不可点击等）不继续处理音效/胜负
+    if (!picked) return
+
     const cur = engineState.value
     if (!cur) return
+
+    // 机制解析音效（从 state 中读取，避免 result 跨作用域问题）
+    if (cur.lastResolvedMechanics.length > 0 && soundEnabled.value) {
+      audioManager.playSfx('match')
+    }
 
     // 音效反馈 + 连击夸赞触发
     if (cur.matchCount_total > prevMatchTotal) {
       // 发生了消除
-      // 1) 检测是否跨越了夸赞阈值（首次达到 3/5/7/10/15/20）
       const crossedTier = getComboTierCrossed(prevCombo, cur.combo)
       if (crossedTier) {
-        // 触发夸赞弹幕
         comboPraise.value = {
           visible: true,
           tier: crossedTier,
           combo: cur.combo
         }
-        // 播放对应等级连击音效（仅在首次达到阈值时触发）
         if (soundEnabled.value) {
           audioManager.playComboPraise(crossedTier)
         }
       }
 
-      // 2) 消除反馈：统一使用温和风铃音效
       if (soundEnabled.value) {
         audioManager.playGentleClickSound()
       }

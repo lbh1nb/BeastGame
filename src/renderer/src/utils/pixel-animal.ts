@@ -1,6 +1,6 @@
 /**
  * 像素风 Q 萌动物绘制系统（32×32 扁平方块版）
- * 纯逻辑层，用 Canvas API 程序化绘制 20 种动物
+ * 纯逻辑层，用 Canvas API 程序化绘制 30 种动物
  *
  * v4 改动：
  *  - 24×24 → 32×32 像素网格，体型更大、特征更突出
@@ -8,6 +8,10 @@
  *  - 去掉 variant（戴帽子）变体，每种动物唯一模型
  *  - 扁平方块风格：去掉圆形描边 'O'，纯色块填充
  *  - 每种动物有独特体型轮廓 + 独特识别特征，保证一眼可辨
+ *
+ * v5 新增：
+ *  - 20 种 → 30 种动物（马、牛、狼、鹰、猴、鹿、猫头鹰、天鹅、海豚、海龟）
+ *  - 新增 drawMechanicOverlay / drawMechanicResolved 机制遮罩函数
  *
  * 像素字符含义：
  *  '.' 透明
@@ -992,6 +996,474 @@ const SPRITES: Record<AnimalType, AnimalSprite> = {
       '.....MTTTTTTTTTTTTTTTTTTTTM.....',
       '......MTTTTTTTTTTTTTTTTTTM......',
     ]
+  },
+
+  // ============ 第1章 家畜 补 ============
+
+  // 马：棕色方身 + 竖耳 + 鬃毛（深棕）+ 长脸
+  horse: {
+    palette: {
+      ...BASE,
+      M: '#8d6e63',  // 棕
+      S: '#6d4c41',  // 暗棕
+      L: '#a1887f',  // 亮棕
+      T: '#4e342e'   // 鬃毛深棕
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '..........MMMMM.................',
+      '.........MMTTTM.................',
+      '.........MMTTTM.................',
+      '........MMTTTMM.................',
+      '........MMLTTMM.................',
+      '.......MMLLTTMM.................',
+      '.......MMEELLMM.................',
+      '.......MMEELLMM.................',
+      '.......MMMNMMM..................',
+      '.......MMMMMMM..................',
+      '......MMMMMMMMM.................',
+      '......MMMMMMMMM.................',
+      '.....MMMMMMMMMMM................',
+      '.....MMLMMMMMMLMM...............',
+      '....MMLMMMMMMMMMM...............',
+      '....MMLMMMMMMMMMMM..............',
+      '....MMLMMMMMMMMMMMM.............',
+      '....MMMMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMMM............',
+      '.....MMMMMMMMMMMMMM.............',
+      '.....MMMMMMMMMMMMMM.............',
+      '......MMMMMMMMMMMM..............',
+      '......MMMM....MMMM..............',
+      '......MMMM....MMMM..............',
+      '......MMMM....MMMM..............',
+      '.....MMMM......MMMM.............',
+      '................................',
+    ]
+  },
+
+  // 牛：黑白奶牛纹 + 粉色鼻 + 短角
+  cow: {
+    palette: {
+      ...BASE,
+      M: '#fafafa',  // 白
+      S: '#e0e0e0',  // 暗白
+      L: '#ffffff',  // 亮白
+      T: '#1a1a1a',  // 斑块黑
+      P: '#ffb3c1',  // 鼻粉
+      K: '#1a1a1a'   // 角黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.........KK......KK.............',
+      '........KKKK....KKKK............',
+      '........KKKK....KKKK............',
+      '......MMMMMMLLMMMMMMM...........',
+      '.....MMMMMMLLMMMMMMMM...........',
+      '....MMMMMMLLMMMMMMMMMM..........',
+      '....MMTEEMMMMMMMMTEEMM..........',
+      '....MMTEEMMMMMMMMTEEMM..........',
+      '....MMTPPPMMMMMMTPPPMM..........',
+      '....MTPPPPMMMMMTPPPPMM..........',
+      '....MTPPPPMMM..MMMMMM...........',
+      '....MMMMTWWW..WTMMMMM...........',
+      '.....MMMWWWWT..TWWWMMM..........',
+      '.....MMMWWWWWWTWWWWMM...........',
+      '.....MMTWWWWWWWWWWMM............',
+      '.....MMMTWWWWWWWWWMM............',
+      '......MMMTWWWWWWWWMM............',
+      '......MMMMMWWWWWWMMM............',
+      '.......MMMMMWWWWWMMM............',
+      '........MMMMMMMMMMMM............',
+      '........MMMMMMMMMMMM............',
+      '.........MMMMMMMMMM.............',
+      '.........MMMMMMMMMM.............',
+      '..........MMMMMMMM..............',
+      '..........MMMM.MMM..............',
+      '..........MMMM.MMM..............',
+      '..........MMMM.MMM..............',
+      '.........MMMM...MMM.............',
+      '........MMMM.....MMM............',
+      '................................',
+    ]
+  },
+
+  // ============ 第2章 野生 补 ============
+
+  // 狼：深灰 + 尖耳 + 锐利黄眼 + 尖嘴
+  wolf: {
+    palette: {
+      ...BASE,
+      M: '#546e7a',  // 深灰
+      S: '#37474f',  // 暗灰
+      L: '#78909c',  // 亮灰
+      W: '#e0e0e0',  // 嘴白
+      E: '#ffd54f'   // 黄眼
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.........MMMM...................',
+      '........MMMMMM..................',
+      '........MMMMMM..................',
+      '.......MMMMMMMM.................',
+      '......MMMMMMMMMM................',
+      '......MMLMMMMMLMM...............',
+      '.....MMEEMMMMMLLMM..............',
+      '.....MMEEMMMMLLLMM..............',
+      '.....MMNMMMMMLLLMM..............',
+      '.....MMMMMMMMLMM................',
+      '....MMMMMMMMMMM.................',
+      '....MMMMMMMMMMMM................',
+      '...MMLMMMMMMMMMLMM..............',
+      '...MMLMMMMMMMMMMLMM.............',
+      '...MMLMMMMMMMMMMMMM.............',
+      '...MMLMMMMMMMMMMMMMM............',
+      '...MMMMMMMMMMMMMMMMMM...........',
+      '...MMMMMMMMMMMMMMMMMM...........',
+      '...MMMMWWMMMMMMMMMMMM...........',
+      '...MMMMWWMMMMMMMMMMMM...........',
+      '....MMMWWWMMMMMMMMMM............',
+      '....MMMWWWMMMMMMMMMM............',
+      '.....MMMWWWMMMMMMMMM............',
+      '......MMMWWWMMMMMMM.............',
+      '.......MMWWWWMMMMM..............',
+      '.......MMMWWWWMMM...............',
+      '........MMMM..MMM...............',
+      '........MMMM...MMM..............',
+      '.......MMMM.....MMM.............',
+      '................................',
+    ]
+  },
+
+  // 鹰：深棕身 + 白首 + 黄弯嘴 + 展翅
+  eagle: {
+    palette: {
+      ...BASE,
+      M: '#5d4037',  // 深棕
+      S: '#3e2723',  // 暗棕
+      L: '#795548',  // 亮棕
+      W: '#ffffff',  // 白头
+      N: '#ffa000'   // 嘴金黄
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '......MLM......MLM..............',
+      '.....MMMMM....MMMMM.............',
+      '....MMMMMMM..MMMMMMM............',
+      '...MMMMMMMM..MMMMMMMM...........',
+      '..MMMMMMMMWWWWMMMMMMMM..........',
+      '.MMMMMMMMWWWWWWWMMMMMMMM........',
+      'MMMMMMMMWWWWWWWMMMMMMMMM........',
+      'MMMMMWWWWWWWWWWWWWWWMMMMMMMM....',
+      'MMMMWWWWWWWWWWWWWWWWWMMMMMMM....',
+      'MMMWWWWWWWWWWWWWWWWWWWMMMMMM....',
+      'MMMMWWWWWWWNNWWWWWWWWWMMMMMM....',
+      '.MMMMWWWWWWNNNWWWWWWWWMMMMM.....',
+      '.MMMMMMMMMEEENMMMMMMMMMMM.......',
+      '.MMMMMMMMMEEENMMMMMMMMM.........',
+      '..MMMMMMMMMMMMMMMMMMMMM.........',
+      '...MMMMLMMMMMMMMMMMMMM..........',
+      '...MMLLLMMMMMMMMMMMMM...........',
+      '...MLMMMMLMMMMMMMMMMM...........',
+      '...MMMMMMLMMMMMMMMMMM...........',
+      '...MMMMMLLMMMMMMMMMMM...........',
+      '...MMMMLLLLMMMMMMMMMM...........',
+      '....MMMLLLLMMMMMMMMMM...........',
+      '....MMMMMMMMMMMMMMMMM...........',
+      '.....MMMMMMMMMMMMMMM............',
+      '......MMMMMMMMMMMMM.............',
+      '.......MMMMMMMMMMM..............',
+      '........MMMMMMMMM...............',
+      '........MMM...MMM...............',
+      '.......MMM.....MMM..............',
+      '................................',
+    ]
+  },
+
+  // ============ 第3章 森林 补 ============
+
+  // 猴：浅棕 + 圆耳 + 长尾 + 笑脸
+  monkey: {
+    palette: {
+      ...BASE,
+      M: '#a1887f',  // 浅棕
+      S: '#795548',  // 暗棕
+      L: '#bcaaa4',  // 亮棕
+      P: '#ffb3c1'   // 脸粉
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.........MMMM...................',
+      '........MMMMMMM.................',
+      '........MMMMMMM.................',
+      '........MMMMMMM.................',
+      '.......MMMMLMMMM................',
+      '......MMPLLLPLLMM...............',
+      '......MMPLLLLPLLMM..............',
+      '.....MMEELLLLLLEEMM.............',
+      '.....MMEELLLLLLEEMM.............',
+      '.....MMMPLLLLLLPMMM.............',
+      '......MMMPLLLLPMM...............',
+      '......MMMMMPPMMMM...............',
+      '......MMMMMMMMMM................',
+      '.....MMMMMMMMMMMM...............',
+      '.....MMLMMMMMMMMLMM.............',
+      '....MMLMMMMMMMMMMLMM............',
+      '....MMLMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMMM............',
+      '....MMMMMMMMMMMMMMM.............',
+      '.....MMMMMMMMMMMMM..............',
+      '.....MMMMMMMMMMMMM..............',
+      '......MMMMMMMMMMM...............',
+      '......MMMMMMMMMMMMMMMMM.........',
+      '......MMMMMMMMMMMMMMM...........',
+      '.......MMMMMMMMMMMMMM........MM.',
+      '........MMMMMMMMMMMMM........MM.',
+      '.........MMMMMMMMMMMM.....MMM...',
+      '.........MMM..MMMMM....MMM......',
+      '..........M....MM.....MM........',
+    ]
+  },
+
+  // 鹿：浅棕身 + 分叉角 + 白斑 + 长颈
+  deer: {
+    palette: {
+      ...BASE,
+      M: '#bf8f6a',  // 浅棕
+      S: '#8d6e63',  // 暗棕
+      L: '#d4a87c',  // 亮棕
+      T: '#5d4037',  // 角棕
+      W: '#ffffff'   // 白斑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.........TT...TT................',
+      '........TTT..TTT................',
+      '.........TTT.T..................',
+      '........MMMMMMM.................',
+      '.......MMMMMMMM.................',
+      '.......MMMMMMMM.................',
+      '.......MMMMMMMM.................',
+      '.......MMEEMM...................',
+      '.......MMEEMM...................',
+      '.......MMPPMM...................',
+      '.......MMMMMMMM.................',
+      '.......MMMMMMMM.................',
+      '.......MMMMMMMM.................',
+      '.......MMMMMMMM.................',
+      '......MMMMMMMMMM................',
+      '......MMWMMMMWMM................',
+      '......MMWMMMMWMM................',
+      '......MMMMMMMMMMMM..............',
+      '.....MWMMMMMMMMMWM..............',
+      '....MMWMMMMMMMMMMWM.............',
+      '....MMMMMMMMMMMMMMM.............',
+      '....MMMMMMMMMMMMMMM.............',
+      '....MMMMMMMMMMMMMMM.............',
+      '....MMMMMMMMMMMMMMM.............',
+      '.....MMMMMMMMMMMM...............',
+      '.....MMMMMMMMMMMM...............',
+      '......MMMM..MMMM................',
+      '......MMMM..MMMM................',
+      '.....MMMM....MMMM...............',
+      '................................',
+    ]
+  },
+
+  // ============ 第4章 鸟类 补 ============
+
+  // 猫头鹰：灰棕身 + 大圆眼 + 圆脸盘 + 尖嘴
+  owl: {
+    palette: {
+      ...BASE,
+      M: '#795548',  // 灰棕
+      S: '#5d4037',  // 暗棕
+      L: '#a1887f',  // 亮棕
+      W: '#fff3e0',  // 脸盘米白
+      E: '#1a1a1a',  // 眼黑
+      N: '#ff6f00'   // 嘴橙
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '.........MMMMMMM................',
+      '........MMMMMMMMM...............',
+      '........MMMMMMMMM...............',
+      '.......MMMMMMMMMMM..............',
+      '......MMMWWWWWWWMMMM............',
+      '.....MMMWWWWWWWWWWMMM...........',
+      '.....MMMWWWEEEEWWWMMMM..........',
+      '....MMMWWWEEEEWWWWWMMM..........',
+      '....MMWWWEEEEWWWWWWMM...........',
+      '....MMWMWEEEEWWMMMMM............',
+      '....MMMMMWNNWMMMMM..............',
+      '....MMMMMMWWNMMMMM..............',
+      '....MMMMMMMMMMMMMMM.............',
+      '....MMLMMMMMMMMMMMM.............',
+      '....MMLMMMMMMMMMMMM.............',
+      '....MMLMMMMMMMMMMMMM............',
+      '....MMLMMMMMMMMMMMMMM...........',
+      '....MMMMMMMMMMMMMMMMMM..........',
+      '....MMMMMMMMMMMMMMMMMM..........',
+      '....MMMMMMMMMMMMMMMMMM..........',
+      '.....MMMMMMMMMMMMMMMM...........',
+      '.....MMMMMMMMMMMMMMMM...........',
+      '......MMMMMMMMMMMMMM............',
+      '.......MMMMMMMMMMMM.............',
+      '.......MMMMMMMMMMMM.............',
+      '........MMMMMMMMMM..............',
+      '........MMMM..MMMM..............',
+      '........MMMM..MMMM..............',
+      '.......MMMM....MMMM.............',
+      '................................',
+    ]
+  },
+
+  // 天鹅：纯白身 + S形长颈 + 红弯嘴 + 翅尖微翘
+  swan: {
+    palette: {
+      ...BASE,
+      M: '#ffffff',  // 纯白
+      S: '#e0e0e0',  // 阴影
+      L: '#fafafa',  // 亮白
+      N: '#d32f2f',  // 嘴红
+      K: '#1a1a1a'   // 眼黑
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '................................',
+      '..............NMN...............',
+      '.............NNM................',
+      '.............NMM................',
+      '.............MMM................',
+      '.............MMM................',
+      '.............MMM................',
+      '............MMMM................',
+      '............MMMM................',
+      '............MMMLM...............',
+      '............MMMMM...............',
+      '............MMMMM...............',
+      '............MMMMM...............',
+      '...........MMMMMMM..............',
+      '..........MMMMMMMMM.............',
+      '.........MMMMMMMMMMM............',
+      '........MMMMMMMMMMMMM...........',
+      '.......MMMMMMMMMMMMMMM..........',
+      '......MMMEMMMMMMMMMMMMM.........',
+      '......MMMKMMMMMMMMMMMMMMMM......',
+      '......MMMMLMMMMMMMMMMMMMMMM.....',
+      '......MMMMLMMMMMMMMMMMMMMMM.....',
+      '......MMMMMMMMMMMMMMMMMMMM......',
+      '......MMMMMMMMMMMMMMMMMMMM......',
+      '.......MMMMMMMMMMMMMMMMMM.......',
+      '........MMMMMMMMMMMMMMMM........',
+      '.........MMMMMMMMMMMMM..........',
+      '..........MMMMMMMMMMM...........',
+      '................................',
+      '................................',
+    ]
+  },
+
+  // ============ 第5章 海洋 补 ============
+
+  // 海豚：天蓝灰流线身 + 三角背鳍 + 笑脸弧嘴 + 尾鳍
+  dolphin: {
+    palette: {
+      ...BASE,
+      M: '#64b5f6',  // 天蓝灰
+      S: '#42a5f5',  // 暗蓝
+      L: '#90caf9',  // 亮蓝
+      W: '#ffffff'   // 肚白
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '................................',
+      '...............MMMM.............',
+      '.............MMMMMMM............',
+      '............MMMMMMMMM...........',
+      '...........MMMMMMMMMMM..........',
+      '..........LMMMMMMMMMMMM.........',
+      '.........LMMMMMMMMMMMMMM........',
+      '........LMMMMMMMMMMMMMMMM.......',
+      '.......LMMMMMEEMMMMMMMMMM.......',
+      '.......MMMMMEEMMMMMMMMMMM.......',
+      '.......MMMMSMMMMMMMMMMMMM.......',
+      '.......MMMMMMMMMMMMWWMMM........',
+      '........MMMMMMWWWWWWWWMM........',
+      '........MMMMMWWWWWWWWWMMM.......',
+      '........MMMMWWWWWWWWWWWMM.......',
+      '.........MMMWWWWWWWWWWMMM.......',
+      '.........MMWWWWWWWWWWWMM........',
+      '.........MMMMMMWWWWWWWMM........',
+      '..........MMMMMMWWWWWMMM........',
+      '..........MMMMMMMMMMMMM.........',
+      '...........MMMMMMMMMMMM.........',
+      '...........MMMMMMMMMMMM.........',
+      '............MMMMMMMMMM..........',
+      '............MMMMMMM.............',
+      '.............MMMMMMM............',
+      '............MMMM.MMMM...........',
+      '...........MMMM...MMMM..........',
+      '..........MMMM.....MMMM.........',
+      '.........MMMM.......MMM.........',
+      '..........M.....................',
+    ]
+  },
+
+  // 海龟：深绿壳 + 浅绿头肢 + 龟壳纹理
+  turtle: {
+    palette: {
+      ...BASE,
+      M: '#2e7d32',  // 深绿壳
+      S: '#1b5e20',  // 暗绿
+      L: '#66bb6a',  // 亮绿头肢
+      T: '#a5d6a7'   // 壳纹浅绿
+    },
+    pixels: [
+      '................................',
+      '................................',
+      '................................',
+      '.........LLL....................',
+      '........LLLLL...................',
+      '.......LLLLLLL..................',
+      '......LLLLLLLLMMMMMMM...........',
+      '.....LLLLLLLMMMMMMMMMMM.........',
+      '....LLLLLLLMMMMMTTMMMMMMM.......',
+      '..LLLMMMMMMMTTTMTTTMMMMMMM......',
+      '.LLLLMMMMMTTTTMMTTTTMMMMMM......',
+      '.LLLMMMMTTTTTMMTTTTTMMMMMMM.....',
+      '...MMMMTTTTTTMMTTTTTMMMMMMM.....',
+      '...MMMMTTTTTTMTTTTTTMMMMML......',
+      '...MMMMTTTTTTMTTTTTTMMMMML......',
+      '...MMMMTTTTTTMTTTTTTMMMLLL......',
+      '....MMMMMTTTTMTTTTMMMMLLL.......',
+      '....MMMMMMTTTTTTTMMMMLLL........',
+      '.....MMMMMMTTTTTMMMMLLL.........',
+      '......MMMMMMTTTMMMMLLL..........',
+      '.......MMMMMTMMMMLLL............',
+      '........LLLMMMMMMMML............',
+      '.......LLLLLMMMMMMML............',
+      '......LLLLLLLMMMMML.............',
+      '.....LLLLLLLLLLMML..............',
+      '....LLLLLLLLLLLLL...............',
+      '.....LLLLLLLLLLLL...............',
+      '.....LLLLL...LLLLL..............',
+      '.....LLLLL...LLLLL..............',
+      '....LLLLL.....LLLLL.............',
+      '...LLLLL.......LLLLL............',
+      '................................',
+    ]
   }
 }
 
@@ -1072,7 +1544,7 @@ export function getAnimalBgColor(_animal: AnimalType): string {
 }
 
 /**
- * 动物中文名映射（20 种）
+ * 动物中文名映射（30 种）
  */
 export const ANIMAL_NAMES: Record<AnimalType, string> = {
   // 第1章 家畜
@@ -1080,25 +1552,173 @@ export const ANIMAL_NAMES: Record<AnimalType, string> = {
   pig: '小猪',
   chicken: '小鸡',
   dog: '小狗',
+  horse: '小马',
+  cow: '奶牛',
   // 第2章 野生
   tiger: '老虎',
   lion: '狮子',
   bear: '棕熊',
   fox: '狐狸',
+  wolf: '灰狼',
+  eagle: '雄鹰',
   // 第3章 森林
   frog: '青蛙',
   crocodile: '鳄鱼',
   elephant: '大象',
   panda: '熊猫',
+  monkey: '猴子',
+  deer: '小鹿',
   // 第4章 鸟类
   flamingo: '火烈鸟',
   peacock: '孔雀',
   penguin: '企鹅',
   parrot: '鹦鹉',
+  owl: '猫头鹰',
+  swan: '天鹅',
   // 第5章 海洋
   fish: '小鱼',
   whale: '鲸鱼',
   octopus: '章鱼',
-  jellyfish: '水母'
+  jellyfish: '水母',
+  dolphin: '海豚',
+  turtle: '海龟'
 }
+
+/** 绘制机制遮罩（在动物之上） */
+export function drawMechanicOverlay(
+  ctx: CanvasRenderingContext2D,
+  mechanicType: string,
+  canvasSize: number
+): void {
+  const s = canvasSize
+  const half = s / 2
+  ctx.globalAlpha = 0.55
+
+  switch (mechanicType) {
+    case 'moody': {
+      // 乌云遮罩 - 顶层深色
+      ctx.fillStyle = '#37474f'
+      ctx.beginPath()
+      // jagged cloud shape
+      const pts = [
+        [0, half], [s*0.12, half*0.4], [s*0.25, half*0.25], [half, half*0.1],
+        [s*0.75, half*0.25], [s*0.88, half*0.4], [s, half],
+        [s*0.9, half*0.75], [s, s*0.85], [s*0.85, s],
+        [0, s], [s*0.1, s*0.75]
+      ]
+      ctx.moveTo(pts[0][0], pts[0][1])
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+      ctx.closePath()
+      ctx.fill()
+      // small lightning bolt
+      ctx.fillStyle = '#ffd54f'
+      ctx.beginPath()
+      ctx.moveTo(s*0.42, s*0.35)
+      ctx.lineTo(s*0.48, s*0.55)
+      ctx.lineTo(s*0.45, s*0.55)
+      ctx.lineTo(s*0.52, s*0.75)
+      ctx.lineTo(s*0.46, s*0.55)
+      ctx.lineTo(s*0.50, s*0.55)
+      ctx.closePath()
+      ctx.fill()
+      break
+    }
+    case 'vine': {
+      // 绿色藤蔓缠绕
+      ctx.fillStyle = '#388e3c'
+      const cx = half, cy = half
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * 72 + 15) * Math.PI / 180
+        ctx.beginPath()
+        const x1 = cx + Math.cos(angle) * half * 0.25
+        const y1 = cy + Math.sin(angle) * half * 0.25
+        const x2 = cx + Math.cos(angle) * half * 0.9
+        const y2 = cy + Math.sin(angle) * half * 0.9
+        ctx.moveTo(x1, y1)
+        ctx.lineTo(x2, y2)
+        ctx.lineWidth = 3
+        ctx.strokeStyle = '#2e7d32'
+        ctx.stroke()
+      }
+      // 叶片
+      ctx.fillStyle = '#66bb6a'
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * 120) * Math.PI / 180
+        const bx = cx + Math.cos(angle) * half * 0.6
+        const by = cy + Math.sin(angle) * half * 0.6
+        ctx.beginPath()
+        ctx.ellipse(bx, by, 6, 3, angle, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      break
+    }
+    case 'sleepy': {
+      // ZZZ气泡 + 半透明暗色
+      ctx.fillStyle = 'rgba(30,30,60,0.3)'
+      ctx.fillRect(0, 0, s, s)
+      // bubbles
+      ctx.fillStyle = '#e3f2fd'
+      ctx.globalAlpha = 0.7
+      ;[[s*0.65, s*0.25, 6],[s*0.78, s*0.12, 8],[s*0.88, s*0.02, 5]].forEach(([x,y,r]) => {
+        ctx.beginPath()
+        ctx.arc(x as number, y as number, r as number, 0, Math.PI*2)
+        ctx.fill()
+      })
+      ctx.globalAlpha = 0.55
+      break
+    }
+    case 'hidden': {
+      // 金色问号
+      ctx.fillStyle = '#1a1a1a'
+      ctx.fillRect(0, 0, s, s)
+      ctx.fillStyle = '#ffd700'
+      ctx.font = `bold ${s*0.6}px serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('?', half, half)
+      break
+    }
+    case 'bubble': {
+      // 半透明气泡 + 内部模糊
+      ctx.fillStyle = 'rgba(144,202,249,0.4)'
+      ctx.beginPath()
+      ctx.arc(half, half, half*0.85, 0, Math.PI*2)
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+      // 高光
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      ctx.beginPath()
+      ctx.arc(half*0.65, half*0.55, half*0.2, 0, Math.PI*2)
+      ctx.fill()
+      break
+    }
+  }
+  ctx.globalAlpha = 1
+}
+
+/** 绘制机制解除后的效果 */
+export function drawMechanicResolved(
+  ctx: CanvasRenderingContext2D,
+  mechanicType: string,
+  canvasSize: number
+): void {
+  if (mechanicType !== 'moody' && mechanicType !== 'sleepy') return
+  const s = canvasSize
+  const half = s / 2
+  // gold sparkle
+  ctx.fillStyle = '#ffd700'
+  ctx.globalAlpha = 0.6
+  for (let i = 0; i < 4; i++) {
+    const angle = (i * 90) * Math.PI / 180
+    const x = half + Math.cos(angle) * half * 0.35
+    const y = half + Math.sin(angle) * half * 0.35
+    ctx.beginPath()
+    ctx.arc(x, y, 3, 0, Math.PI*2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
 

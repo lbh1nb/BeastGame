@@ -7,6 +7,7 @@
         :combo="engineState.combo"
         :elapsed="elapsed"
         :mode="engineState.mode"
+        :click-remaining="engineState.clickRemaining"
         @back="onBack"
         @restart="onRestart"
         @pause="togglePause"
@@ -68,11 +69,30 @@
         @confirm="onRestart"
         @cancel="onBack"
       >
+        <!-- 闯关模式：关卡信息 -->
+        <div v-if="levelInfo" class="level-info">{{ levelInfo }}</div>
         <div class="result-detail">
           <div class="result-row"><span>最终分数</span><b>{{ gameStore.finalScore }}</b></div>
           <div class="result-row"><span>最高连击</span><b>x{{ engineState.maxCombo }}</b></div>
           <div class="result-row"><span>用时</span><b>{{ formatTime(elapsed) }}</b></div>
           <div class="result-row"><span>消除图案</span><b>{{ engineState.tilesRemoved }}</b></div>
+        </div>
+        <!-- 闯关模式：上下关导航 -->
+        <div v-if="props.mode === 'level'" class="level-nav">
+          <button
+            class="level-nav-btn"
+            :disabled="!canGoPrevLevel"
+            @click="goToPrevLevel"
+          >
+            ← 上一关
+          </button>
+          <button
+            class="level-nav-btn"
+            :disabled="!canGoNextLevel"
+            @click="goToNextLevel"
+          >
+            下一关 →
+          </button>
         </div>
       </Dialog>
     </template>
@@ -83,6 +103,15 @@
       <BaseButton type="ghost" @click="onBack">返回菜单</BaseButton>
     </div>
   </div>
+
+  <!-- 机制提示弹窗 -->
+  <MechanicIntro
+    v-if="mechanicIntro"
+    :animal="mechanicIntro.animal"
+    :title="mechanicIntro.title"
+    :body="mechanicIntro.body"
+    @dismiss="mechanicIntro = null"
+  />
 </template>
 
 <script setup lang="ts">
@@ -96,7 +125,9 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '@stores/game'
-import type { GameMode } from '@game/types'
+import { useUserStore } from '@stores/user'
+import { getLevelById, CHAPTERS, getChapterMechanic } from '@game/levels.config'
+import type { GameMode, AnimalType } from '@game/types'
 import GameHUD from '@components/game/GameHUD.vue'
 import TileStack from '@components/game/TileStack.vue'
 import TileSlot from '@components/game/TileSlot.vue'
@@ -104,6 +135,7 @@ import PropBar from '@components/game/PropBar.vue'
 import ComboPraise from '@components/game/ComboPraise.vue'
 import BaseButton from '@components/common/BaseButton.vue'
 import Dialog from '@components/common/Dialog.vue'
+import MechanicIntro from '@components/game/MechanicIntro.vue'
 import audioManager from '@audio/manager'
 
 const props = defineProps<{ mode: string }>()
@@ -111,6 +143,7 @@ const props = defineProps<{ mode: string }>()
 const route = useRoute()
 const router = useRouter()
 const gameStore = useGameStore()
+const userStore = useUserStore()
 
 const engineState = computed(() => gameStore.engineState)
 
@@ -119,6 +152,51 @@ const levelId = computed<number | undefined>(() => {
   const q = route.query.levelId
   return q != null ? Number(q) : undefined
 })
+
+/** 闯关模式上一关是否可用（第 1 关不可用） */
+const canGoPrevLevel = computed(() => {
+  if (props.mode !== 'level') return false
+  const lid = levelId.value
+  return lid != null && lid > 1
+})
+
+/** 闯关模式下一关是否可用（存在且已解锁） */
+const canGoNextLevel = computed(() => {
+  if (props.mode !== 'level') return false
+  const lid = levelId.value
+  if (lid == null || lid >= 30) return false
+  return userStore.isLevelUnlocked(lid + 1)
+})
+
+/** 闯关模式关卡描述文本 */
+const levelInfo = computed<string | null>(() => {
+  if (props.mode !== 'level') return null
+  const lid = levelId.value
+  if (lid == null) return null
+  const cfg = getLevelById(lid)
+  if (!cfg) return `第 ${lid} 关`
+  const chapter = CHAPTERS.find((c) => c.id === cfg.chapter)
+  const bossTag = cfg.isBoss ? ' BOSS' : ''
+  return `第 ${lid} 关${bossTag} · 第 ${cfg.chapter} 章 ${chapter?.name ?? ''}`
+})
+
+/** 切换到指定关卡 */
+function navigateToLevel(targetLevelId: number): void {
+  resultVisible.value = false
+  router.push({ path: '/game/level', query: { levelId: targetLevelId } })
+}
+
+function goToPrevLevel(): void {
+  const lid = levelId.value
+  if (lid != null && lid > 1) navigateToLevel(lid - 1)
+}
+
+function goToNextLevel(): void {
+  const lid = levelId.value
+  if (lid != null && lid < 30 && userStore.isLevelUnlocked(lid + 1)) {
+    navigateToLevel(lid + 1)
+  }
+}
 
 /** 计时器 */
 const now = ref(Date.now())
@@ -140,13 +218,30 @@ const elapsed = computed(() => {
 /** 局终弹窗显隐 */
 const resultVisible = ref(false)
 
+/** 机制提示弹窗数据 */
+const mechanicIntro = ref<{ animal: AnimalType; title: string; body: string } | null>(null)
+
+/** 检查是否需要显示机制提示（每次进入有机制的关卡都弹） */
+function checkMechanicIntro(): void {
+  if (props.mode !== 'level') return
+  const lid = levelId.value
+  if (lid == null) return
+  const cfg = getLevelById(lid)
+  if (!cfg?.mechanic) return
+  const mec = getChapterMechanic(cfg.chapter)
+  if (!mec) return
+  mechanicIntro.value = { animal: mec.introAnimal, title: mec.introTitle, body: mec.introBody }
+}
+
 /** 初始化本局 */
 async function initGame(): Promise<void> {
   paused.value = false
   pauseOffset.value = 0
   pausedAt = null
   resultVisible.value = false
+  mechanicIntro.value = null
   await gameStore.startGame(props.mode as GameMode, levelId.value)
+  checkMechanicIntro()
 }
 
 /** 监听模式 / 关卡变化，重新初始化 */
@@ -179,9 +274,15 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
-  gameStore.exitToHome()
-  audioManager.stopBgm()
+  try {
+    if (timer) { clearInterval(timer); timer = undefined }
+  } catch (e) { console.error('[Game] 清理 timer 失败', e) }
+  try {
+    gameStore.exitToHome()
+  } catch (e) { console.error('[Game] exitToHome 失败', e) }
+  try {
+    audioManager.stopBgm()
+  } catch (e) { console.error('[Game] stopBgm 失败', e) }
 })
 
 function onPick(tileId: number): void {
@@ -190,7 +291,6 @@ function onPick(tileId: number): void {
 }
 
 function onBack(): void {
-  gameStore.exitToHome()
   router.push('/')
 }
 
@@ -291,6 +391,15 @@ function formatTime(sec: number): string {
   margin: 8px 0;
 }
 
+/* 关卡信息 */
+.level-info {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+
 .result-row {
   display: flex;
   justify-content: space-between;
@@ -301,6 +410,38 @@ function formatTime(sec: number): string {
 
 .result-row b {
   color: var(--color-primary-dark);
+}
+
+/* 闯关导航按钮 */
+.level-nav {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.level-nav-btn {
+  padding: 8px 20px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-primary);
+  background: var(--color-bg-card);
+  color: var(--color-primary-dark);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.level-nav-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.level-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: var(--color-border);
+  color: var(--color-text-light);
 }
 
 /* 加载态 */

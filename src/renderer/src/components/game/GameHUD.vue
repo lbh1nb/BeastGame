@@ -7,6 +7,11 @@
         <span class="stat-label">分数</span>
         <span class="stat-value">{{ score }}</span>
       </div>
+      <!-- 点击数：居中显眼位置，颜色分级 -->
+      <div v-if="clickRemaining >= 0" class="stat stat--clicks" :class="clicksClass">
+        <span class="stat-label">🖱️ 点击数</span>
+        <span class="stat-value clicks-value">{{ clickRemaining }}</span>
+      </div>
       <div class="stat" :class="comboClass">
         <span class="stat-label">连击</span>
         <span class="stat-value combo-value">x{{ combo }}</span>
@@ -40,9 +45,12 @@ interface Props {
   combo: number
   elapsed: number
   mode: GameMode
+  clickRemaining?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  clickRemaining: -1
+})
 
 const emit = defineEmits<{
   (e: 'back'): void
@@ -69,6 +77,17 @@ const comboClass = computed(() => {
   if (c >= 3) return 'stat--good'
   if (c >= 2) return 'stat--hot'
   return ''
+})
+
+/** 点击数颜色分级 */
+const clicksClass = computed(() => {
+  const c = props.clickRemaining
+  if (c < 0) return ''
+  if (c === 0) return 'clicks--empty'
+  if (c <= 5) return 'clicks--danger'
+  if (c <= 15) return 'clicks--warn'
+  if (c <= 30) return 'clicks--normal'
+  return 'clicks--safe'
 })
 </script>
 
@@ -219,5 +238,60 @@ const comboClass = computed(() => {
 
 .hud-btn:active {
   transform: scale(0.92);
+}
+
+/* ===== 点击数颜色分级 ===== */
+.stat--clicks {
+  min-width: 72px;
+}
+
+.clicks-value {
+  font-size: 22px;
+  font-weight: 900;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+/* 充裕（>= 30）：翠绿 */
+.clicks--safe .clicks-value {
+  color: #43a047;
+  text-shadow: 0 0 10px rgba(67, 160, 71, 0.4);
+}
+
+/* 正常（16-30）：蓝青 */
+.clicks--normal .clicks-value {
+  color: #00acc1;
+  text-shadow: 0 0 8px rgba(0, 172, 193, 0.35);
+}
+
+/* 紧张（6-15）：橙黄 */
+.clicks--warn .clicks-value {
+  color: #fb8c00;
+  font-size: 24px;
+  text-shadow: 0 0 10px rgba(251, 140, 0, 0.5);
+}
+
+/* 告急（1-5）：红色 + 脉冲闪烁 */
+.clicks--danger .clicks-value {
+  color: #f44336;
+  font-size: 26px;
+  text-shadow: 0 0 14px rgba(244, 67, 54, 0.7);
+  animation: clicks-pulse 0.6s ease-in-out infinite;
+}
+
+/* 耗尽（0）：灰色 */
+.clicks--empty .clicks-value {
+  color: #9e9e9e;
+  font-size: 26px;
+}
+
+@keyframes clicks-pulse {
+  0%, 100% {
+    transform: scale(1);
+    text-shadow: 0 0 14px rgba(244, 67, 54, 0.7);
+  }
+  50% {
+    transform: scale(1.2);
+    text-shadow: 0 0 24px rgba(244, 67, 54, 1);
+  }
 }
 </style>

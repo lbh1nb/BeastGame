@@ -540,6 +540,48 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
   jellyfish: [
     { freq: 800, duration: 300, type: 'sine', volume: 0.1, slideTo: 1000, vibrato: 3, vibratoDepth: 8 },
     { freq: 1000, duration: 400, type: 'sine', volume: 0.1, vibrato: 3, vibratoDepth: 8 }
+  ],
+  // 新增动物（简单回退音效）
+  horse: [
+    { freq: 400, duration: 150, type: 'sawtooth', volume: 0.15, slideTo: 600 },
+    { freq: 600, duration: 200, type: 'sawtooth', volume: 0.12, slideTo: 500 }
+  ],
+  cow: [
+    { freq: 200, duration: 500, type: 'sawtooth', volume: 0.15, slideTo: 250, vibrato: 2, vibratoDepth: 10 },
+    { freq: 220, duration: 400, type: 'sawtooth', volume: 0.12 }
+  ],
+  wolf: [
+    { freq: 500, duration: 300, type: 'sawtooth', volume: 0.12, slideTo: 800 },
+    { freq: 700, duration: 250, type: 'sawtooth', volume: 0.1, slideTo: 600 }
+  ],
+  eagle: [
+    { freq: 1200, duration: 200, type: 'sine', volume: 0.1, slideTo: 1800 },
+    { freq: 1600, duration: 150, type: 'sine', volume: 0.08, slideTo: 1400 }
+  ],
+  monkey: [
+    { freq: 600, duration: 80, type: 'sawtooth', volume: 0.12, slideTo: 800 },
+    { freq: 700, duration: 80, type: 'sawtooth', volume: 0.1, slideTo: 900 },
+    { freq: 650, duration: 80, type: 'sawtooth', volume: 0.12, slideTo: 750 }
+  ],
+  deer: [
+    { freq: 350, duration: 200, type: 'triangle', volume: 0.1, vibrato: 4, vibratoDepth: 8 },
+    { freq: 400, duration: 250, type: 'triangle', volume: 0.08 }
+  ],
+  owl: [
+    { freq: 450, duration: 300, type: 'sine', volume: 0.1, vibrato: 2, vibratoDepth: 5 },
+    { freq: 420, duration: 300, type: 'sine', volume: 0.08 }
+  ],
+  swan: [
+    { freq: 350, duration: 400, type: 'triangle', volume: 0.08, slideTo: 500 },
+    { freq: 500, duration: 300, type: 'triangle', volume: 0.06 }
+  ],
+  dolphin: [
+    { freq: 2000, duration: 100, type: 'sine', volume: 0.12, slideTo: 3000 },
+    { freq: 2500, duration: 80, type: 'sine', volume: 0.1, slideTo: 3500 }
+  ],
+  turtle: [
+    { freq: 150, duration: 600, type: 'sawtooth', volume: 0.1, slideTo: 120, vibrato: 1, vibratoDepth: 5 },
+    { freq: 130, duration: 400, type: 'sawtooth', volume: 0.08 }
   ]
 }
 

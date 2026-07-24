@@ -14,11 +14,11 @@
  *  第5章 海洋：fish / whale / octopus / jellyfish
  */
 export type AnimalType =
-  | 'sheep' | 'pig' | 'chicken' | 'dog'        // 第1章 家畜
-  | 'tiger' | 'lion' | 'bear' | 'fox'          // 第2章 野生
-  | 'frog' | 'crocodile' | 'elephant' | 'panda' // 第3章 森林
-  | 'flamingo' | 'peacock' | 'penguin' | 'parrot' // 第4章 鸟类
-  | 'fish' | 'whale' | 'octopus' | 'jellyfish' // 第5章 海洋
+  | 'sheep' | 'pig' | 'chicken' | 'dog' | 'horse' | 'cow'        // 第1章 家畜
+  | 'tiger' | 'lion' | 'bear' | 'fox' | 'wolf' | 'eagle'          // 第2章 野生
+  | 'frog' | 'crocodile' | 'elephant' | 'panda' | 'monkey' | 'deer' // 第3章 森林
+  | 'flamingo' | 'peacock' | 'penguin' | 'parrot' | 'owl' | 'swan' // 第4章 鸟类
+  | 'fish' | 'whale' | 'octopus' | 'jellyfish' | 'dolphin' | 'turtle' // 第5章 海洋
 
 /** 游戏模式：3消 / 4消 / 闯关 */
 export type GameMode = 'classic3' | 'classic4' | 'level'
@@ -28,6 +28,18 @@ export type GameStatus = 'playing' | 'won' | 'lost'
 
 /** 道具类型：撤回 / 洗牌 / 提示 */
 export type PropType = 'undo' | 'shuffle' | 'hint'
+
+/** 章节机制类型 */
+export type MechanicType = 'moody' | 'vine' | 'sleepy' | 'hidden' | 'bubble'
+
+/** 牌面机制状态 */
+export interface MechanicState {
+  type: MechanicType
+  /** 闹脾气/贪睡：剩余等待次数(2=需要2次消除才能解除)；藤蔓/气泡：1=需要点击解除 */
+  stuck: number
+  /** 已消除计数（闹脾气/贪睡机制用） */
+  matchedCount: number
+}
 
 /** 图案（麻将牌式的方块） */
 export interface Tile {
@@ -42,6 +54,8 @@ export interface Tile {
   removed: boolean          // 是否已消除
   inSlot: boolean           // 是否在槽位中
   slotIndex: number         // 槽位索引，-1=不在槽位
+  /** 章节机制状态（闯关模式专用），无机制时为 undefined */
+  mechanicState?: MechanicState
 }
 
 /** 槽位（底部最多 7/8 个，满了即输） */
@@ -90,6 +104,16 @@ export interface LevelConfig {
   timeLimit?: number      // Boss关可能有时间限制（秒）
   /** 多区域布局配置，不填时按旧逻辑单区域生成 */
   regions?: RegionConfig[]
+  /** 章节机制配置 */
+  mechanic?: {
+    type: MechanicType
+    /** 受机制影响的牌比例 (0~1) */
+    ratio: number
+    /** 点击限制的初始点击数（vine/bubble 用），消除返还数 */
+    clickLimit?: number
+    /** 每次消除返还点击数 */
+    clickRefund?: number
+  }
 }
 
 /** 游戏运行时状态 */
@@ -114,4 +138,8 @@ export interface GameState {
   status: GameStatus
   hintTileIds: number[]       // 提示高亮的 tile id
   lastMatchedTileIds: number[] // 最近消除的 tile id（用于动画）
+  /** 点击限制计数器（vine/bubble 机制用，-1 = 无限制） */
+  clickRemaining: number
+  /** 最近一次消除解析的机制列表（供音效使用） */
+  lastResolvedMechanics: string[]
 }

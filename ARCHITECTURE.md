@@ -289,53 +289,39 @@ flowchart TD
 
 ---
 
-## 五、30关章节结构
+## 五、30关章节结构（v1.2.0）
+
+前五章统一配置，章节靠动物种类和机制区分；第六章难度增加。
 
 ```mermaid
 flowchart LR
-    subgraph S1["第1章 家畜 🐑🐔"]
-        L1["1-1<br/>18图案/2层"] --> L2["1-2<br/>21/2"]
-        L2 --> L3["1-3<br/>24/2"]
-        L3 --> L4["1-4<br/>27/2"]
-        L4 --> L5["1-5 Boss<br/>36/3/180s"]
+    subgraph S1["第1章 家畜 🐑🐔 闹脾气"]
+        L1["1-1<br/>90张/6层"] --> L2["1-2<br/>150张/7层"]
+        L2 --> L3["1-3<br/>210张/10层 + moody"]
+        L3 --> L4["1-4<br/>240张/10层 + moody"]
+        L4 --> L5["1-5 Boss<br/>312张/10层 + moody"]
     end
-    subgraph S2["第2章 宠物 🐱🐶"]
-        L6["2-1<br/>21/2"] --> L10["2-5 Boss<br/>39/3/180s"]
+    subgraph S2["第2章 野生 🐯🦁 藤蔓"]
+        L10["2-5 Boss<br/>351张/11层 + vine"]
     end
-    subgraph S3["第3章 小动物 🐰🐹"]
-        L11["3-1<br/>24/3"] --> L15["3-5 Boss<br/>45/3/180s"]
+    subgraph S6["第6章 综合 🐯🦊🐟 混沌"]
+        L26["6-1<br/>210张/9层"] --> L30["6-5 Boss<br/>468张/13层 + 混沌"]
     end
-    subgraph S4["第4章 野生 🐯🐻"]
-        L16["4-1<br/>27/3"] --> L20["4-5 Boss<br/>48/4/180s"]
-    end
-    subgraph S5["第5章 海洋 🐟🐳"]
-        L21["5-1<br/>33/4"] --> L25["5-5 Boss<br/>57/4/180s"]
-    end
-    subgraph S6["第6章 鸟类 🐤🦢"]
-        L26["6-1<br/>36/4"] --> L30["6-5 Boss<br/>60/5/180s"]
-    end
-
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+    S1 --> S2 --> S6
 
     style S1 fill:#6b8e23,color:#ffffff
     style S2 fill:#cd853f,color:#ffffff
-    style S3 fill:#556b2f,color:#ffffff
-    style S4 fill:#8b4513,color:#ffffff
-    style S5 fill:#2f4f4f,color:#ffffff
     style S6 fill:#4b0082,color:#ffffff
 ```
 
 ### 难度曲线
 
-| 章节 | 普通关图案数 | Boss关图案数 | 层数 | 时间限制 |
-|---|---|---|---|---|
-| 1 | 18→27 | 36 | 2-3 | 无 |
-| 2 | 21→30 | 39 | 2-3 | 无 |
-| 3 | 24→33 | 45 | 3 | 无 |
-| 4 | 27→36 | 48 | 3-4 | 无 |
-| 5 | 33→42 | 57 | 4 | 无 |
-| 6 | 36→45 | 60 | 4-5 | 无 |
-| Boss | - | - | - | 180秒 |
+| 章节 | L1 | L2 | L3 | L4 | Boss | 层数范围 |
+|---|---|---|---|---|---|---|
+| 1-5章 | 90张/6层 | 150张/7层 | 210张/10层 | 240张/10层 | 312-390张/10-11层 | 6-11 |
+| 第6章 | 210张/9层 | 270张/10层 | 330张/12层 | 360张/13层 | 468张/13层 | 9-13 |
+
+Boss 关时间限制：240秒
 
 ---
 
@@ -1265,4 +1251,82 @@ flowchart LR
 | `src/renderer/src/views/Settings.vue` | 删除「动物音效」设置区域（双按钮切换 UI） |
 | `src/renderer/src/audio/manager.ts` | 删除 `AnimalSoundMode` 类型及 `setAnimalSoundMode`/`getAnimalSoundMode` 方法；新增 `playDecorAnimalSound()` 用于加载界面装饰动物 |
 | `src/renderer/src/views/Home.vue` | 装饰动物音效改为点击触发（`playDecorAnimalSound`），不再使用 hover 触发 |
+
+---
+
+## 二十、v1.2.0 改动：章节机制 + 关卡平衡 + 点击数UI（2026-07-24）
+
+### 20.1 改动总览
+
+```mermaid
+flowchart LR
+    subgraph 机制["章节机制系统"]
+        M1["5种机制<br/>moody/vine/sleepy/hidden/bubble"]
+        M2["resolveMechanics<br/>消除后自动解除"]
+        M3["getCoveringTiles<br/>覆盖判断一致性"]
+    end
+
+    subgraph 平衡["关卡平衡调整"]
+        B1["前五章统一配置<br/>90/150/210/240/312张"]
+        B2["第6章难度增加<br/>210/270/330/360/468张"]
+        B3["层数6-13层<br/>轻快休闲节奏"]
+    end
+
+    subgraph UI["UI改进"]
+        U1["点击数HUD居中<br/>颜色分级告急闪烁"]
+        U2["返回按钮修复<br/>移除transition"]
+    end
+
+    style M1 fill:#2d5a2d,color:#fff
+    style B1 fill:#4a3d2b,color:#fff
+    style U1 fill:#3d4a7a,color:#fff
+```
+
+### 20.2 章节机制系统
+
+每章 L3-L5 引入独特机制，增加策略深度：
+
+| 章节 | 机制 | 效果 | L3比例 | L4比例 | L5比例 |
+|---|---|---|---|---|---|
+| 第1章 家畜 | 闹脾气 moody | 牌被乌云遮罩，消除一组后解除 | 30% | 40% | 40% |
+| 第2章 野生 | 藤蔓 vine | 点击消耗次数，消除返还 | 30% | 40% | 40% |
+| 第3章 森林 | 贪睡 sleepy | 牌在睡觉，消除一组后唤醒 | 30% | 40% | 40% |
+| 第4章 鸟类 | 躲猫猫 hidden | 牌面隐藏，点击翻开 | 25% | 35% | 35% |
+| 第5章 海洋 | 气泡 bubble | 点击消耗次数，消除返还 | 30% | 40% | 40% |
+| 第6章 综合 | 混沌混合 | 随机混合前5章机制 | - | - | - |
+
+**解析优先级**：消除后优先解除**未被上层牌遮挡的**闹脾气/贪睡牌，确保用户看到视觉反馈。
+
+### 20.3 点击数 UI 改进
+
+点击数（藤蔓/气泡机制）从 HUD 右侧隐藏位移到中央 `分数 | 点击数 | 连击 | 时长`：
+
+| 剩余点击数 | 颜色 | 效果 |
+|---|---|---|
+| ≥ 30 | 翠绿 #43a047 | 光晕 |
+| 16-30 | 蓝青 #00acc1 | 正常 |
+| 6-15 | 橙黄 #fb8c00 | 字号放大 |
+| 1-5 | 红色 #f44336 | 脉冲闪烁告急 |
+| 0 | 灰色 | 已耗尽 |
+
+### 20.4 关卡平衡
+
+前五章统一配置（仅动物种类和机制不同），第六章难度增加约30%。详细数据见[第五节](#五30关章节结构v120)。
+
+### 20.5 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/game/types.ts` | 新增 MechanicState/MechanicType 类型 |
+| `src/game/engine.ts` | resolveMechanics 机制解析 + getCoveringTiles 统一 |
+| `src/game/levels.config.ts` | 5种章节机制配置 + 关卡平衡调整 |
+| `src/game/generator.ts` | 牌面附加 mechanicState |
+| `src/game/matcher.ts` | getCoveringTiles 排除 inSlot |
+| `src/renderer/src/stores/game.ts` | lastResolvedMechanics 音效触发 |
+| `src/renderer/src/components/game/GameHUD.vue` | 点击数居中 + 5档颜色分级 |
+| `src/renderer/src/components/game/Tile.vue` | 机制遮罩 Canvas 渲染 |
+| `src/renderer/src/components/game/MechanicIntro.vue` | 机制介绍弹窗 |
+| `src/renderer/src/views/Game.vue` | 返回按钮修复 |
+| `src/renderer/src/App.vue` | 移除 transition 白屏问题 |
+| `src/main/index.ts` | DevTools 仅开发模式 |
 | `src/main/db/repository.ts` | `DEFAULT_SETTINGS` 删除 `animalSoundMode` 字段 |

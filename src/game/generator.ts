@@ -8,7 +8,7 @@
  *  - Tile.region 字段保留但恒为 0（向后兼容类型定义）
  *  - 牌数大幅增量：180-540 张
  */
-import type { AnimalType, LevelConfig, Tile } from './types'
+import type { AnimalType, LevelConfig, MechanicState, MechanicType, Tile } from './types'
 
 /**
  * 布局常量（generator 与 TileStack 共享，保证逻辑覆盖判断与视觉一致）
@@ -200,7 +200,29 @@ export function generateTiles(config: LevelConfig): Tile[] {
       .map((u) => u.id)
   }
 
-  // 5. 打乱数组顺序（隐藏层序）
+  // 5. 章节机制：给场上牌附加机制状态
+  if (config.mechanic) {
+    const { type, ratio } = config.mechanic
+    const count = Math.ceil(tiles * ratio)
+    const ALL_MECHANIC_TYPES: MechanicType[] = ['moody', 'vine', 'sleepy', 'hidden', 'bubble']
+    const isSingleType = ALL_MECHANIC_TYPES.includes(type as MechanicType)
+
+    // 随机选取 count 张牌（生成时所有牌都在场上）
+    const indices = Array.from({ length: tilesArr.length }, (_, i) => i)
+    shuffle(indices)
+    const selected = new Set(indices.slice(0, count))
+
+    for (let i = 0; i < tilesArr.length; i++) {
+      if (!selected.has(i)) continue
+      const mechanicType: MechanicType = isSingleType
+        ? (type as MechanicType)
+        : ALL_MECHANIC_TYPES[Math.floor(Math.random() * ALL_MECHANIC_TYPES.length)]
+      const stuck = mechanicType === 'moody' ? 1 : 1
+      tilesArr[i].mechanicState = { type: mechanicType, stuck, matchedCount: 0 }
+    }
+  }
+
+  // 6. 打乱数组顺序（隐藏层序）
   shuffle(tilesArr)
 
   return tilesArr
