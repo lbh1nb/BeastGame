@@ -1330,3 +1330,225 @@ flowchart LR
 | `src/renderer/src/App.vue` | 移除 transition 白屏问题 |
 | `src/main/index.ts` | DevTools 仅开发模式 |
 | `src/main/db/repository.ts` | `DEFAULT_SETTINGS` 删除 `animalSoundMode` 字段 |
+
+---
+
+## 二十一、v9 改动：动物模型替换为图片素材 + 扩充至48种（2026-08-03）
+
+### 21.1 改动总览
+
+```mermaid
+flowchart LR
+    subgraph 素材["动物图片素材"]
+        S1["static/ 静态图"]
+        S2["active/ 悬停动态图"]
+        S3["读取 shoulege-shou-animals-assets"]
+    end
+
+    subgraph 加载["图片加载管线"]
+        L1["animal-image.ts<br/>抠图+裁剪+缓存"]
+        L2["asset:resolve IPC<br/>打包/开发路径解析"]
+    end
+
+    subgraph 渲染["渲染集成"]
+        R1["PixelAnimal.vue<br/>加载static/active"]
+        R2["EarthGlobe.vue<br/>地球场景小动物"]
+        R3["Tile.vue<br/>牌面显示"]
+    end
+
+    subgraph 扩展["扩充至48种"]
+        E1["types.ts<br/>AnimalType 48种"]
+        E2["levels.config.ts<br/>每章8种×6章"]
+        E3["audio/manager.ts<br/>48种叫声映射"]
+        E4["tone-generator.ts<br/>48种回退音效"]
+    end
+
+    S1 --> L1
+    S2 --> L1
+    L2 --> L1
+    L1 --> R1
+    L1 --> R2
+    L1 --> R3
+    E1 --> E2
+    E2 --> E3
+    E3 --> E4
+
+    style S1 fill:#2d4a3e,color:#fff
+    style L1 fill:#3d5a3d,color:#fff
+    style R1 fill:#4a3d2b,color:#fff
+    style E1 fill:#3d3a6a,color:#fff
+```
+
+**背景**：原动物使用 Canvas 程序化绘制的 24×24 像素风，用户反馈辨识度低、无法认出动物。本次改为使用真实图片素材（`shoulege-shou-animals-assets` 提供的 static/active 素材），并扩充动物种类至素材库全部48种。
+
+### 21.2 动物图片素材
+
+新增 `resources/animals/` 目录：
+
+| 目录 | 内容 | 用途 |
+|---|---|---|
+| `static/` | 48张动物静态图（`{animal}.jpg`） | 牌面默认显示 |
+| `active/` | 悬停动态图（`{animal}_active.jpg`） | 鼠标悬停时切换 |
+
+素材为带浅色背景的 JPEG，加载时由 `animal-image.ts` 自动处理：
+1. **抠透明**：以角落像素颜色为背景参考色，容差低于 `BG_TOLERANCE` 的像素设为透明
+2. **裁剪主体**：计算非透明像素的边界，裁剪到动物主体范围
+3. **缓存**：按 `(animal, folder)` 键缓存结果，避免重复处理
+
+### 21.3 图片加载工具（animal-image.ts）
+
+新增 `src/renderer/src/utils/animal-image.ts`：
+
+| 函数 | 作用 |
+|---|---|
+| `getAnimalImage(animal, hover)` | 返回抠图后的透明、已裁剪的 canvas |
+
+路径解析通过 Electron IPC `asset:resolve` 完成：
+- **开发环境**：`app.getAppPath()/resources/animals`
+- **打包环境**：`process.resourcesPath/animals`
+
+### 21.4 动物扩充至48种
+
+`AnimalType` 从 30 种扩充至 48 种，按 6 章 × 每章 8 种分配：
+
+| 章节 | 动物 |
+|---|---|
+| 第1章 家畜 | sheep·pig·chicken·cow·horse·goat·duck·rooster |
+| 第2章 野兽 | tiger·lion·bear·wolf·fox·zebra·camel·giraffe |
+| 第3章 森林 | monkey·panda·deer·moose·kangaroo·koala·squirrel·raccoon |
+| 第4章 小动物 | rabbit·cat·dog·otter·badger·beaver·hedgehog·skunk |
+| 第5章 海洋 | fish·whale·dolphin·octopus·jellyfish·turtle·crab·seahorse |
+| 第6章 综合 | hippo·rhino·elephant·frog·seal·owl·goose·penguin |
+
+同步更新：
+- `src/game/types.ts`：`AnimalType` 扩充至48种
+- `src/game/levels.config.ts`：每章 8 种动物
+- `src/renderer/src/audio/manager.ts`：`ANIMAL_SFX_MAP` 扩充至48种
+- `src/renderer/src/audio/tone-generator.ts`：`ANIMAL_SOUND_SEQUENCES` 补齐48种回退音效
+
+### 21.5 渲染集成
+
+| 组件 | 改动 |
+|---|---|
+| `PixelAnimal.vue` | 由 Canvas 绘制像素图改为加载 static/active 图片素材 |
+| `EarthGlobe.vue` | 地球场景小动物改为加载图片绘制 |
+| `Tile.vue` | 牌面动物尺寸与显示匹配 |
+
+### 21.6 清理已移除动物引用
+
+移除旧版本中已被替换的动物（crocodile/flamingo/peacock/parrot/eagle/swan/boar/hare/meerkat/ostrich/shark/cheetah）在代码中的残留引用：
+- `tone-generator.ts`：删除这些动物的特殊音效分支与音效序列
+- `Levels.vue`：`FALLBACK_CHAPTERS` 与 `levels.config` 保持一致
+- `db/index.ts`：移除未使用的 `Statement` 导入
+
+### 21.7 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `resources/animals/` | **新增** 动物图片素材（static 48张 + active 56张） |
+| `src/renderer/src/utils/animal-image.ts` | **新增** 图片加载/抠图/裁剪/缓存工具 |
+| `src/renderer/src/components/game/PixelAnimal.vue` | 改为加载图片素材 |
+| `src/renderer/src/components/game/EarthGlobe.vue` | 地球场景小动物用图片绘制 |
+| `src/renderer/src/utils/pixel-animal.ts` | 精简为辅助函数（背景色/名称/机制遮罩） |
+| `src/game/types.ts` | `AnimalType` 扩充至48种 |
+| `src/game/levels.config.ts` | 每章8种动物 |
+| `src/renderer/src/audio/manager.ts` | `ANIMAL_SFX_MAP` 扩充至48种 |
+| `src/renderer/src/audio/tone-generator.ts` | 补齐48种回退音效 + 清理残留 |
+| `src/renderer/src/views/Levels.vue` | `FALLBACK_CHAPTERS` 同步更新 |
+| `src/renderer/src/views/Home.vue` | 装饰动物音效适配 |
+| `src/main/ipc/asset.ts` | 资源路径解析 IPC |
+| `src/preload/index.ts` | 暴露 `asset.resolve` |
+| `src/renderer/src/types/global.d.ts` | 声明 `window.gameAPI.asset` |
+| `electron-builder.json` | `extraResources` 打包 animals 资源 |
+| `scripts/generate-preview.ts` | 预览脚本改为读取图片素材 |
+| `src/main/db/index.ts` | 移除未使用的 `Statement` 导入 |
+
+---
+
+## 二十二、v9.1 修复：动物卡片填满 + 图片预加载（2026-08-03）
+
+### 22.1 问题背景
+
+用户反馈两个视觉问题：
+1. **部分动物模型不能填满整个卡片模块**：`PixelAnimal.vue` 用 `Math.min` 等比缩放居中，长条形或主体较小的动物会在卡片内留大片空白。
+2. **进入游戏时动物模型慢慢加载**：`getAnimalImage` 首次渲染时才异步加载图片（读文件+抠图+裁剪），导致牌面卡片先空白、随后逐个出现。
+
+### 22.2 修复方案
+
+**问题1：动物填满卡片**
+
+`PixelAnimal.vue` 缩放逻辑由 `Math.min`（contain，完整显示）改为"先 contain 再放大填充"：
+
+- 宽高比接近的动物：放大到填满卡片，主体更饱满
+- 长条形动物：放大到一边填满，但限制不超过 contain 的 1.5 倍，避免过度裁切关键特征
+
+```mermaid
+flowchart LR
+    A["containScale = min(w/cw, h/ch)"] --> B["fillScale = max(w/cw, h/ch)"]
+    B --> C["scale = min(fillScale, containScale*1.5)"]
+    C --> D["居中绘制，填满卡片"]
+```
+
+**问题2：进入游戏前预加载图片**
+
+- `animal-image.ts` 新增 `preloadAnimalImages(animals)`：批量预加载一组动物的 static + active 图片并写入缓存
+- `stores/game.ts` 的 `startGame` 在设置 `engineState` 前，先获取本关动物集合（闯关模式取关卡配置，经典模式取 `makeDefaultConfig`）并预加载，保证进入游戏时所有牌面图片已就绪
+- `engine.ts` 导出 `makeDefaultConfig`，供 store 获取经典模式动物集合
+
+### 22.3 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/renderer/src/components/game/PixelAnimal.vue` | 缩放逻辑改为填充模式，填满卡片 |
+| `src/renderer/src/utils/animal-image.ts` | 新增 `preloadAnimalImages` 预加载函数 |
+| `src/renderer/src/stores/game.ts` | `startGame` 进入游戏前预加载本关动物图片 |
+| `src/game/engine.ts` | 导出 `makeDefaultConfig` |
+
+## 二十三、v10 改动：选关页真3D球体地球 + AI 贴图美化（2026-08-03）
+
+### 23.1 改动总览
+
+原选关页地球为静态平面贴图，观感粗糙且缺乏立体感。本次将其重写为 **Three.js 真3D球体地球**，并使用 AI 图像生成（Seedream）产出卡通等距圆柱贴图，解决"地球太丑、旋转割裂"的问题。
+
+```mermaid
+flowchart LR
+    A["EarthGlobe.vue<br/>Three.js WebGL"] --> B["真3D球体<br/>SphereGeometry"]
+    B --> C["AI 卡通贴图<br/>earth_texture_cartoon_v7.jpg"]
+    C --> D["边缘无缝融合<br/>makeSeamless"]
+    B --> E["半透明云层"]
+    B --> F["大气光晕"]
+    B --> G["星空背景"]
+    B --> H["6章节 emoji 标记"]
+```
+
+### 23.2 真3D地球渲染
+
+- **渲染器**：`THREE.WebGLRenderer`（antialias + alpha 透明背景）
+- **球体**：`SphereGeometry(1, 64, 64)` + `MeshPhongMaterial`，方向光 + 环境光保证立体感
+- **云层**：程序化生成半透明云贴图（`makeCloudTexture`），缓慢漂移
+- **大气光晕**：径向渐变发光精灵（`makeHaloTexture`），Additive 混合
+- **星空**：随机亮点粒子（`addStars`）
+- **交互**：拖动旋转（经度+纬度）、点击标记选章节、悬停标记播放章节动物叫声
+
+### 23.3 AI 贴图美化
+
+- 使用 Seedream 生成 **2:1 等距圆柱投影** 卡通地球贴图（2880×1440）
+- 重点刻画可辨识的大陆轮廓（非洲/美洲/欧亚）+ 青蓝海洋 + 白色云层，风格Q萌
+- 贴图文件：`resources/earth_texture_cartoon_v8.jpg`（多轮迭代 v5→v6→v7→v8，v8 为最终版：极点白色冰盖更自然、大陆更圆润Q萌、配色更清爽）
+- **无缝处理**：`makeSeamless()` 双重处理——左右边缘交叉混色消除水平接缝 + 顶部/底部极点行融合为整行平均色，消除极点（上下边缘）畸变，保证球体旋转无接缝、极点干净
+
+### 23.4 章节标记与旋转
+
+- 6 章节标记（🏠🐾🌳🌿🌊⛰️）为 emoji 精灵，用经纬度→球面坐标算法贴附地球表面，随地球一起旋转
+- 选中章节光环实时更新世界坐标（`updateMatrixWorld` 强制刷新矩阵）
+- 切换章节时地球平滑旋转到对应标记（`rotateToChapter`）
+
+### 23.5 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/renderer/src/components/game/EarthGlobe.vue` | 重写为 Three.js 真3D球体地球，加载 v8 卡通贴图，`makeSeamless` 增加极点融合 |
+| `resources/earth_texture_cartoon_v8.jpg` | **新增** AI 生成卡通等距圆柱地球贴图（极点白色冰盖、Q萌） |
+| `preview/earth-preview.html` | 更新为 v7/v8 对比预览 |
+| `scripts/gen-earth-preview.js` | 生成地球贴图球体预览页（含极点融合验证） |
+| `scripts/serve.js` | 本地静态预览服务器（开发辅助） |

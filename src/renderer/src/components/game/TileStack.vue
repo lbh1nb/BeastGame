@@ -14,6 +14,7 @@
           :tile="t"
           :is-hint="hintSet.has(t.id) && !coveredSet.has(t.id)"
           :is-covered="coveredSet.has(t.id)"
+          :is-selected="pickedFlashSet.has(t.id)"
           :style="posStyle(t)"
           class="stack-tile"
           @pick="onPick"
@@ -39,18 +40,25 @@ import TileComp from './Tile.vue'
 interface Props {
   tiles: Tile[]
   hintTileIds: number[]
+  /** 点击后短暂停留在牌堆的牌 id（用于显示动态图后入槽） */
+  pickedFlashIds?: number[]
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  pickedFlashIds: () => []
+})
 
 const emit = defineEmits<{
   (e: 'pick', tileId: number): void
 }>()
 
-/** 待渲染的 tile：未消除 & 不在槽位，按 layer→z 排序 */
+/** 点击后短暂停留的牌 id 集合 */
+const pickedFlashSet = computed(() => new Set(props.pickedFlashIds))
+
+/** 待渲染的 tile：未消除 & 不在槽位，或处于点击闪烁期（保留显示动态图），按 layer→z 排序 */
 const renderTiles = computed(() => {
   return props.tiles
-    .filter((t) => !t.removed && !t.inSlot)
+    .filter((t) => (!t.removed && !t.inSlot) || pickedFlashSet.value.has(t.id))
     .sort((a, b) => a.layer - b.layer || a.z - b.z)
 })
 

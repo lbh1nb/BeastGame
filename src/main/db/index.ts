@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import initSqlJs, { SqlJsStatic, Database as SqlJsDatabase, Statement } from 'sql.js'
+import initSqlJs, { SqlJsStatic, Database as SqlJsDatabase } from 'sql.js'
 import {
   initLevelProgress,
   initAchievements,

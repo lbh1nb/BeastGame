@@ -14,6 +14,8 @@ import type {
   GameProps,
   GameState,
   LevelConfig,
+  MechanicEvent,
+  MechanicType,
   Slot
 } from './types'
 import { generateTiles } from './generator'
@@ -86,7 +88,7 @@ function applySlotsSnapshot(state: GameState, snapshot: (number | null)[]): void
 }
 
 /** 经典模式默认关卡配置（全屏单大堆版：3消180张/4消240张，8层） */
-function makeDefaultConfig(mode: GameMode): LevelConfig {
+export function makeDefaultConfig(mode: GameMode): LevelConfig {
   const is4 = mode === 'classic4'
   const matchCount = is4 ? 4 : 3
   const maxSlots = is4 ? 8 : 7
@@ -113,21 +115,20 @@ function makeDefaultConfig(mode: GameMode): LevelConfig {
 /**
  * 尝试解析场上 1 个闹脾气牌 + 1 个贪睡牌。
  * 每次消除成功后调用，优先选未被覆盖的牌（用户可见），确保视觉反馈明确。
- * @returns 被解析的机制类型列表（供音效使用）
+ * @returns 被解析的机制事件列表（含 tileId，供视图层播动画 + 音效）
  */
-function resolveMechanics(state: GameState): string[] {
-  const resolved: string[] = []
+function resolveMechanics(state: GameState): MechanicEvent[] {
+  const resolved: MechanicEvent[] = []
 
   function resolveOne(type: 'moody' | 'sleepy'): boolean {
-    const candidates: number[] = []       // 未被覆盖的 tile indices
-    const coveredCandidates: number[] = [] // 被覆盖的 tile indices
+    const candidates: number[] = []
+    const coveredCandidates: number[] = []
 
     for (let i = 0; i < state.tiles.length; i++) {
       const t = state.tiles[i]
       if (t.removed || t.inSlot) continue
       const ms = t.mechanicState
       if (!ms || ms.type !== type || ms.stuck <= 0) continue
-      // 使用 getCoveringTiles（与 TileStack coveredSet 完全一致）
       if (getCoveringTiles(state, t.id).length > 0) {
         coveredCandidates.push(i)
       } else {
@@ -135,13 +136,12 @@ function resolveMechanics(state: GameState): string[] {
       }
     }
 
-    // 优先选未被覆盖的（用户可见）
     const targetIdx = candidates.length > 0 ? candidates[0] : coveredCandidates[0]
     if (targetIdx === undefined) return false
 
     const t = state.tiles[targetIdx]
     t.mechanicState = { type, stuck: 0, matchedCount: 0 }
-    resolved.push(type)
+    resolved.push({ kind: 'resolved', tileId: t.id, type })
     return true
   }
 
@@ -188,7 +188,8 @@ export class GameEngine {
       hintTileIds: [],
       lastMatchedTileIds: [],
       clickRemaining: config.mechanic?.clickLimit ?? -1,
-      lastResolvedMechanics: []
+      lastResolvedMechanics: [],
+      lastMechanicEvents: []
     }
   }
 
@@ -216,11 +217,13 @@ export class GameEngine {
         // 贪睡：stuck 未清除则不能点
         if (ms.stuck > 0) return { state, matched: false, picked: false }
       } else if ((ms.type === 'vine' || ms.type === 'bubble') && ms.stuck > 0) {
-        // 藤蔓/气泡：解除 stuck，消耗一次点击
+        // 藤蔓/气泡：解除 stuck，消耗一次点击，记录 broken 事件
         const next = cloneState(state)
         const vt = next.tiles.find((t) => t.id === tileId)!
         vt.mechanicState!.stuck = 0
         if (next.clickRemaining > 0) next.clickRemaining -= 1
+        next.lastMechanicEvents = [{ kind: 'broken', tileId, type: ms.type as MechanicType }]
+        next.lastResolvedMechanics = []
         return { state: next, matched: false, picked: false }
       }
       // hidden: 点击翻开即可，不阻止后续逻辑
@@ -229,6 +232,8 @@ export class GameEngine {
     if (!canPick(state, tileId)) return { state, matched: false, picked: false }
 
     const next = cloneState(state)
+    next.lastMechanicEvents = []
+    next.lastResolvedMechanics = []
 
     // 消耗点击次数
     if (next.clickRemaining > 0) next.clickRemaining -= 1
@@ -243,9 +248,10 @@ export class GameEngine {
       return { state, matched: false, picked: false }
     }
     const pt = next.tiles.find((t) => t.id === tileId)!
-    // hidden: 翻开后清除机制状态
+    // hidden: 翻开后清除机制状态，记录 revealed 事件
     if (pt.mechanicState?.type === 'hidden') {
       delete pt.mechanicState
+      next.lastMechanicEvents.push({ kind: 'revealed', tileId })
     }
     pt.inSlot = true
     pt.slotIndex = slotIdx
@@ -293,8 +299,9 @@ export class GameEngine {
       next.lastMatchedTileIds = matchIds
 
       // 消除后尝试解析场上机制牌
-      const resolvedMechanics = resolveMechanics(next)
-      next.lastResolvedMechanics = resolvedMechanics
+      const resolvedEvents = resolveMechanics(next)
+      next.lastMechanicEvents.push(...resolvedEvents)
+      next.lastResolvedMechanics = resolvedEvents.map(e => e.type as string)
 
       // 返还点击次数
       const refund = state.config.mechanic?.clickRefund ?? 0

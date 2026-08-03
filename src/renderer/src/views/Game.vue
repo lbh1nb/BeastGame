@@ -13,11 +13,15 @@
         @pause="togglePause"
       />
 
+      <!-- 游戏标题 -->
+      <GameTitle :mode="engineState.mode" :level-id="levelId" />
+
       <!-- 牌堆区 -->
       <div class="game-main">
         <TileStack
           :tiles="engineState.tiles"
           :hint-tile-ids="engineState.hintTileIds"
+          :picked-flash-ids="gameStore.pickedFlashIds"
           @pick="onPick"
         />
       </div>
@@ -129,6 +133,7 @@ import { useUserStore } from '@stores/user'
 import { getLevelById, CHAPTERS, getChapterMechanic } from '@game/levels.config'
 import type { GameMode, AnimalType } from '@game/types'
 import GameHUD from '@components/game/GameHUD.vue'
+import GameTitle from '@components/game/GameTitle.vue'
 import TileStack from '@components/game/TileStack.vue'
 import TileSlot from '@components/game/TileSlot.vue'
 import PropBar from '@components/game/PropBar.vue'

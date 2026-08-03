@@ -19,12 +19,14 @@
     "howler": "^2.2.4",
     "pinia": "^2.2.2",
     "sql.js": "^1.14.1",
+    "three": "^0.160.0",
     "vue": "^3.5.0",
     "vue-router": "^4.4.3"
   },
   "devDependencies": {
     "@types/howler": "^2.2.11",
     "@types/node": "^20.14.10",
+    "@types/three": "^0.160.0",
     "@vitejs/plugin-vue": "^5.0.5",
     "@vue/tsconfig": "^0.5.1",
     "electron": "^28.3.3",

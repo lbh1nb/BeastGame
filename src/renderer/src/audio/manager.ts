@@ -83,44 +83,62 @@ const TIER_SFX_MAP: Record<ComboTier, SfxName> = {
   godlike: 'combo_godlike'
 }
 
-/** 动物叫声文件名映射（20种动物） */
+/** 动物叫声文件名映射（48种动物，素材缺失时回退到合成音效） */
 const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   // 第1章 家畜
   sheep: 'animal_sheep.mp3',
   pig: 'animal_pig.mp3',
   chicken: 'animal_chicken.mp3',
-  dog: 'animal_dog.mp3',
-  // 第2章 野生
+  cow: 'animal_cow.mp3',
+  horse: 'animal_horse.mp3',
+  goat: 'animal_goat.mp3',
+  duck: 'animal_duck.mp3',
+  rooster: 'animal_rooster.mp3',
+  // 第2章 野兽
   tiger: 'animal_tiger.mp3',
   lion: 'animal_lion.mp3',
   bear: 'animal_bear.mp3',
+  wolf: 'animal_wolf.mp3',
   fox: 'animal_fox.mp3',
+  zebra: 'animal_zebra.mp3',
+  camel: 'animal_camel.mp3',
+  giraffe: 'animal_giraffe.mp3',
   // 第3章 森林
-  frog: 'animal_frog.mp3',
-  crocodile: 'animal_crocodile.mp3',
-  elephant: 'animal_elephant.mp3',
+  monkey: 'animal_monkey.mp3',
   panda: 'animal_panda.mp3',
-  // 第4章 鸟类
-  flamingo: 'animal_flamingo.mp3',
-  peacock: 'animal_peacock.mp3',
-  penguin: 'animal_penguin.mp3',
-  parrot: 'animal_parrot.mp3',
+  deer: 'animal_deer.mp3',
+  moose: 'animal_moose.mp3',
+  kangaroo: 'animal_kangaroo.mp3',
+  koala: 'animal_koala.mp3',
+  squirrel: 'animal_squirrel.mp3',
+  raccoon: 'animal_raccoon.mp3',
+  // 第4章 小动物
+  rabbit: 'animal_rabbit.mp3',
+  cat: 'animal_cat.mp3',
+  dog: 'animal_dog.mp3',
+  otter: 'animal_otter.mp3',
+  badger: 'animal_badger.mp3',
+  beaver: 'animal_beaver.mp3',
+  hedgehog: 'animal_hedgehog.mp3',
+  skunk: 'animal_skunk.mp3',
   // 第5章 海洋
   fish: 'animal_fish.mp3',
   whale: 'animal_whale.mp3',
+  dolphin: 'animal_dolphin.mp3',
   octopus: 'animal_octopus.mp3',
   jellyfish: 'animal_jellyfish.mp3',
-  // 新增动物
-  horse: 'animal_horse.mp3',
-  cow: 'animal_cow.mp3',
-  wolf: 'animal_wolf.mp3',
-  eagle: 'animal_eagle.mp3',
-  monkey: 'animal_monkey.mp3',
-  deer: 'animal_deer.mp3',
+  turtle: 'animal_turtle.mp3',
+  crab: 'animal_crab.mp3',
+  seahorse: 'animal_seahorse.mp3',
+  // 第6章 综合
+  hippo: 'animal_hippo.mp3',
+  rhino: 'animal_rhino.mp3',
+  elephant: 'animal_elephant.mp3',
+  frog: 'animal_frog.mp3',
+  seal: 'animal_seal.mp3',
   owl: 'animal_owl.mp3',
-  swan: 'animal_swan.mp3',
-  dolphin: 'animal_dolphin.mp3',
-  turtle: 'animal_turtle.mp3'
+  goose: 'animal_goose.mp3',
+  penguin: 'animal_penguin.mp3'
 }
 
 /** 支持的 BGM 名（可扩展） */

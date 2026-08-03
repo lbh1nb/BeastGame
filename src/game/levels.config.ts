@@ -18,15 +18,15 @@ export interface Chapter {
 }
 
 /**
- * 6 章配置（v5：每章6种动物）
+ * 6 章配置（v9：每章8种动物，图片素材版）
  */
 export const CHAPTERS: Chapter[] = [
-  { id: 1, name: '家畜', animals: ['sheep', 'pig', 'chicken', 'dog', 'horse', 'cow'], theme: '#FFF8DC' },
-  { id: 2, name: '野生', animals: ['tiger', 'lion', 'bear', 'fox', 'wolf', 'eagle'], theme: '#FFE8CC' },
-  { id: 3, name: '森林', animals: ['frog', 'crocodile', 'elephant', 'panda', 'monkey', 'deer'], theme: '#E6F5E6' },
-  { id: 4, name: '鸟类', animals: ['flamingo', 'peacock', 'penguin', 'parrot', 'owl', 'swan'], theme: '#FFE4E1' },
-  { id: 5, name: '海洋', animals: ['fish', 'whale', 'octopus', 'jellyfish', 'dolphin', 'turtle'], theme: '#E0F0FF' },
-  { id: 6, name: '综合', animals: ['tiger', 'fox', 'fish', 'peacock', 'panda', 'dolphin'], theme: '#ECE0FF' }
+  { id: 1, name: '家畜', animals: ['sheep', 'pig', 'chicken', 'cow', 'horse', 'goat', 'duck', 'rooster'], theme: '#FFF8DC' },
+  { id: 2, name: '野兽', animals: ['tiger', 'lion', 'bear', 'wolf', 'fox', 'zebra', 'camel', 'giraffe'], theme: '#FFE8CC' },
+  { id: 3, name: '森林', animals: ['monkey', 'panda', 'deer', 'moose', 'kangaroo', 'koala', 'squirrel', 'raccoon'], theme: '#E6F5E6' },
+  { id: 4, name: '小动物', animals: ['rabbit', 'cat', 'dog', 'otter', 'badger', 'beaver', 'hedgehog', 'skunk'], theme: '#FFE4E1' },
+  { id: 5, name: '海洋', animals: ['fish', 'whale', 'dolphin', 'octopus', 'jellyfish', 'turtle', 'crab', 'seahorse'], theme: '#E0F0FF' },
+  { id: 6, name: '综合', animals: ['hippo', 'rhino', 'elephant', 'frog', 'seal', 'owl', 'goose', 'penguin'], theme: '#ECE0FF' }
 ]
 
 /** Boss 关时间限制（秒） */
@@ -95,7 +95,7 @@ const CHAPTER_MECHANICS: Record<number, {
     l5: { type: 'sleepy', ratio: 0.40 }
   },
   4: {
-    introAnimal: 'parrot',
+    introAnimal: 'owl',
     introTitle: '躲猫猫！看不清是谁',
     introBody: '部分牌是"？"问号牌，点击翻开才能看到真面目，翻开后即可入槽。猜猜看是什么动物？',
     l3: { type: 'hidden', ratio: 0.25 },

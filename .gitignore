@@ -1,7 +1,10 @@
 node_modules/
 out/
 release/
+release_tmp/
 dist/
+data/
+shoulege-shou-animals-assets/
 *.log
 .DS_Store
 .idea/

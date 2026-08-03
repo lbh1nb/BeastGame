@@ -1,15 +1,10 @@
 <template>
   <div class="earth-wrap">
-    <!-- Canvas 绘制的真实地球 -->
-    <canvas
-      ref="canvasRef"
-      :width="size"
-      :height="size"
-      class="earth-canvas"
-      @mousedown="startDrag"
-      @mousemove="onDrag"
-      @mouseup="endDrag"
-      @mouseleave="endDrag"
+    <!-- Three.js 真3D地球容器 -->
+    <div
+      ref="containerRef"
+      class="earth-container"
+      :style="{ width: size + 'px', height: size + 'px' }"
     />
 
     <!-- 当前章节信息浮层 -->
@@ -27,21 +22,21 @@
     </div>
 
     <!-- 提示 -->
-    <div class="tip">拖动旋转地球 · 点击标记进入章节</div>
+    <div class="tip">拖动旋转 · 点击气球标记进入章节</div>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * 真实地球组件（Canvas + 真实贴图）
- * - 底图：NASA Blue Marble 真实地球贴图（equirectangular 投影）
- * - 球面投影：经纬度 → 球面正交投影坐标
- * - 360° 旋转：鼠标拖动（经度+纬度）
- * - 6 章节场景：在地球对应位置绘制特色场景（含 2 只小动物+装饰）
- * - 真实感：大气层光晕、边缘暗化、左上高光
+ * 真3D球体地球（Three.js WebGL 版）
+ * - 卡通等距圆柱贴图（Seedream 生成），边缘融合保证无缝旋转
+ * - 真实 3D 球体：360° 无缝旋转、方向光+环境光、半透明云层、大气光晕、星空
+ * - 6 章节标记：气球 emoji 精灵定位在地球表面，随地球一起旋转
+ * - 交互：拖动旋转（经度+纬度）、点击标记选择章节、悬停标记播放动物叫声
+ * - 平滑旋转到章节：切换章节时地球自动旋转到对应标记
  */
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
-import { drawAnimal, PIXEL_SIZE } from '@utils/pixel-animal'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import * as THREE from 'three'
 import type { Chapter } from '@game/levels.config'
 import type { AnimalType } from '@game/types'
 
@@ -60,685 +55,531 @@ const emit = defineEmits<{
   (e: 'hover-animal', animal: AnimalType): void
 }>()
 
-const canvasRef = ref<HTMLCanvasElement | null>(null)
+const containerRef = ref<HTMLDivElement | null>(null)
 
-/** 地球贴图 Image 对象 */
-const earthTexture = ref<HTMLImageElement | null>(null)
-/** 贴图是否加载完成 */
-const textureLoaded = ref(false)
-
-/** 经度（左右旋转） */
-const lon = ref(20)
-/** 纬度（上下旋转） */
-const lat = ref(20)
-/** 是否正在拖动 */
-const dragging = ref(false)
-let lastX = 0
-let lastY = 0
-
-/** 6 章节在地球上的经纬度位置 + 场景主题（与 levels.config 章节对应） */
+/** 6 章节位置（经纬度）+ 名称 + 图标（与 levels.config 章节对应） */
 const chapterLocations = [
-  { chapter: 1, lon: 30, lat: 40, name: '家畜', emoji: '🏠', theme: 'farm' },
-  { chapter: 2, lon: -90, lat: 35, name: '野生', emoji: '🌿', theme: 'wild' },
-  { chapter: 3, lon: 120, lat: -10, name: '森林', emoji: '🌳', theme: 'forest' },
-  { chapter: 4, lon: 20, lat: -20, name: '鸟类', emoji: '🪶', theme: 'bird' },
-  { chapter: 5, lon: -150, lat: 0, name: '海洋', emoji: '🌊', theme: 'ocean' },
-  { chapter: 6, lon: 70, lat: 60, name: '综合', emoji: '⛰️', theme: 'mix' }
+  { chapter: 1, lon: 30, lat: 40, name: '家畜', emoji: '🏠' },
+  { chapter: 2, lon: -90, lat: 35, name: '野兽', emoji: '🐾' },
+  { chapter: 3, lon: 120, lat: -10, name: '森林', emoji: '🌳' },
+  { chapter: 4, lon: 20, lat: -20, name: '小动物', emoji: '🌿' },
+  { chapter: 5, lon: -150, lat: 0, name: '海洋', emoji: '🌊' },
+  { chapter: 6, lon: 70, lat: 60, name: '综合', emoji: '⛰️' }
 ]
 
 const currentChapterName = computed(() => {
   return chapterLocations.find((c) => c.chapter === props.activeChapter)?.name ?? ''
 })
-
 function chapterEmoji(id: number): string {
   return chapterLocations.find((c) => c.chapter === id)?.emoji ?? '📍'
 }
 
-/** 加载真实地球贴图 */
+// ===== Three.js 状态 =====
+let renderer: THREE.WebGLRenderer | null = null
+let scene: THREE.Scene | null = null
+let camera: THREE.PerspectiveCamera | null = null
+let earthGroup: THREE.Group | null = null
+let earthMesh: THREE.Mesh | null = null
+let clouds: THREE.Mesh | null = null
+let halo: THREE.Sprite | null = null
+let markerSprites: THREE.Sprite[] = []
+let activeRing: THREE.Sprite | null = null
+let raycaster = new THREE.Raycaster()
+let pointer = new THREE.Vector2()
+
+/** 经度（左右旋转） / 纬度（上下旋转） */
+let lon = 30
+let lat = 20
+/** 平滑旋转目标（null = 跟随自动旋转） */
+let targetLon: number | null = null
+let targetLat: number | null = null
+/** 是否正在拖动 */
+let dragging = false
+let downX = 0
+let downY = 0
+let moved = false
+let lastHoverChapter = -1
+let animFrame = 0
+let disposed = false
+
+/** 经纬度 → 球面坐标（与 SphereGeometry 顶点公式一致，保证标记贴附正确位置） */
+function latLonToWorld(latDeg: number, lonDeg: number, radius: number): THREE.Vector3 {
+  const phi = ((lonDeg + 180) * Math.PI) / 180
+  const theta = ((90 - latDeg) * Math.PI) / 180
+  return new THREE.Vector3(
+    -radius * Math.cos(phi) * Math.sin(theta),
+    radius * Math.cos(theta),
+    radius * Math.sin(phi) * Math.sin(theta)
+  )
+}
+
+/** 贴图边缘融合：左右边缘交叉混色 + 极点融合，保证球体旋转无缝、极点自然 */
+function makeSeamless(img: HTMLImageElement): HTMLCanvasElement {
+  const w = img.width
+  const h = img.height
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return canvas
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(0, 0, w, h)
+  const d = data.data
+  // 1. 左右边缘交叉混色，消除水平接缝
+  const band = Math.max(4, Math.floor(w * 0.03))
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < band; x++) {
+      const l = (y * w + x) * 4
+      const r = (y * w + (w - 1 - x)) * 4
+      for (let c = 0; c < 4; c++) {
+        const avg = (d[l + c] + d[r + c]) >> 1
+        d[l + c] = avg
+        d[r + c] = avg
+      }
+    }
+  }
+  // 2. 极点融合：把顶部/底部若干行统一为整行平均色，消除极点（上下边缘）畸变
+  const poleBand = Math.max(4, Math.floor(h * 0.03))
+  for (let y = 0; y < poleBand; y++) {
+    for (let c = 0; c < 3; c++) {
+      let s = 0
+      for (let x = 0; x < w; x++) s += d[(y * w + x) * 4 + c]
+      const avg = s / w
+      for (let x = 0; x < w; x++) d[(y * w + x) * 4 + c] = avg
+    }
+  }
+  for (let y = 0; y < poleBand; y++) {
+    const yy = h - 1 - y
+    for (let c = 0; c < 3; c++) {
+      let s = 0
+      for (let x = 0; x < w; x++) s += d[(yy * w + x) * 4 + c]
+      const avg = s / w
+      for (let x = 0; x < w; x++) d[(yy * w + x) * 4 + c] = avg
+    }
+  }
+  ctx.putImageData(data, 0, 0)
+  return canvas
+}
+
+/** 程序化生成云层贴图（半透明白斑） */
+function makeCloudTexture(): THREE.CanvasTexture {
+  const w = 512
+  const h = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(canvas)
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, w, h)
+  for (let i = 0; i < 220; i++) {
+    const x = Math.random() * w
+    const y = Math.random() * h
+    const r = 8 + Math.random() * 42
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    g.addColorStop(0, 'rgba(255,255,255,0.55)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+/** 程序化生成大气光晕贴图（径向发光） */
+function makeHaloTexture(): THREE.CanvasTexture {
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(canvas)
+  const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.3, size / 2, size / 2, size / 2)
+  g.addColorStop(0, 'rgba(150, 210, 255, 0.9)')
+  g.addColorStop(0.55, 'rgba(120, 190, 255, 0.35)')
+  g.addColorStop(1, 'rgba(100, 170, 255, 0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, size, size)
+  return new THREE.CanvasTexture(canvas)
+}
+
+/** 生成 emoji 气球精灵 */
+function makeEmojiSprite(emoji: string, scale: number): THREE.Sprite {
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 128
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.font = '96px serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(emoji, 64, 66)
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
+  const sprite = new THREE.Sprite(mat)
+  sprite.scale.set(scale, scale, 1)
+  return sprite
+}
+
+/** 生成选中章节的脉冲光环精灵 */
+function makeRingSprite(): THREE.Sprite {
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.95)'
+    ctx.lineWidth = 9
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, size * 0.36, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
+  const sprite = new THREE.Sprite(mat)
+  return sprite
+}
+
+/** 程序化回退海洋贴图（贴图加载失败时用） */
+function makeFallbackTexture(): THREE.CanvasTexture {
+  const w = 512
+  const h = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, '#4dabf7')
+    g.addColorStop(0.5, '#228be6')
+    g.addColorStop(1, '#1c4e80')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+    // 几块绿色大陆
+    ctx.fillStyle = '#66bb6a'
+    ctx.beginPath()
+    ctx.ellipse(w * 0.3, h * 0.4, w * 0.12, h * 0.12, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(w * 0.55, h * 0.55, w * 0.1, h * 0.1, 0, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  return new THREE.CanvasTexture(canvas)
+}
+
+/** 初始化 Three.js 场景 */
+function initScene(): void {
+  const container = containerRef.value
+  if (!container) return
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setSize(props.size, props.size)
+  renderer.setClearColor(0x000000, 0)
+  container.appendChild(renderer.domElement)
+
+  scene = new THREE.Scene()
+  camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+  camera.position.set(0, 0, 3.4)
+
+  // 灯光
+  const ambient = new THREE.AmbientLight(0xffffff, 0.55)
+  const sun = new THREE.DirectionalLight(0xffffff, 1.1)
+  sun.position.set(3, 2, 4)
+  scene.add(ambient, sun)
+
+  // 地球组（负责整体旋转）
+  earthGroup = new THREE.Group()
+  scene.add(earthGroup)
+
+  // 地球球体（先用回退贴图，加载真实贴图后替换）
+  const earthGeom = new THREE.SphereGeometry(1, 64, 64)
+  const fallbackTex = makeFallbackTexture()
+  const earthMat = new THREE.MeshPhongMaterial({ map: fallbackTex })
+  earthMesh = new THREE.Mesh(earthGeom, earthMat)
+  earthGroup.add(earthMesh)
+
+  // 半透明云层
+  const cloudTex = makeCloudTexture()
+  clouds = new THREE.Mesh(
+    new THREE.SphereGeometry(1.015, 64, 64),
+    new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: 0.55, depthWrite: false })
+  )
+  earthGroup.add(clouds)
+
+  // 大气光晕（场景级，不随地球旋转）
+  const haloTex = makeHaloTexture()
+  halo = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: haloTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })
+  )
+  halo.scale.set(2.9, 2.9, 1)
+  scene.add(halo)
+
+  // 星空
+  addStars()
+
+  // 章节标记
+  buildMarkers()
+
+  // 选中光环
+  activeRing = makeRingSprite()
+  scene.add(activeRing)
+
+  // 事件
+  bindEvents()
+
+  // 初始朝向
+  const loc = chapterLocations.find((c) => c.chapter === props.activeChapter)
+  if (loc) {
+    lon = loc.lon
+    lat = loc.lat
+  }
+  applyRotation()
+  updateActiveRing()
+
+  // 加载真实贴图（异步）
+  loadEarthTexture()
+
+  // 动画循环
+  animFrame = requestAnimationFrame(animLoop)
+}
+
+/** 添加星空 */
+function addStars(): void {
+  if (!scene) return
+  const count = 900
+  const positions = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    const r = 12 + Math.random() * 8
+    const theta = Math.random() * Math.PI * 2
+    const phi = Math.acos(2 * Math.random() - 1)
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta)
+    positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
+    positions[i * 3 + 2] = r * Math.cos(phi)
+  }
+  const geom = new THREE.BufferGeometry()
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.03, transparent: true, opacity: 0.85 })
+  const stars = new THREE.Points(geom, mat)
+  scene.add(stars)
+}
+
+/** 在地球表面构建章节标记精灵 */
+function buildMarkers(): void {
+  if (!earthGroup || !scene) return
+  markerSprites = []
+  for (const loc of chapterLocations) {
+    const sprite = makeEmojiSprite(loc.emoji, 0.46)
+    sprite.position.copy(latLonToWorld(loc.lat, loc.lon, 1.06))
+    earthGroup.add(sprite)
+    markerSprites.push(sprite)
+  }
+}
+
+/** 加载真实卡通贴图并替换 */
 async function loadEarthTexture(): Promise<void> {
   try {
-    const path = await window.gameAPI.asset.resolve('earth_texture.jpg')
+    const path = await window.gameAPI.asset.resolve('earth_texture_cartoon_v8.jpg')
     const img = new Image()
     img.onload = () => {
-      earthTexture.value = img
-      textureLoaded.value = true
-      render()
+      if (disposed || !earthMesh) return
+      const tex = new THREE.CanvasTexture(makeSeamless(img))
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.anisotropy = renderer?.capabilities.getMaxAnisotropy() ?? 1
+      ;(earthMesh.material as THREE.MeshPhongMaterial).map = tex
+      ;(earthMesh.material as THREE.MeshPhongMaterial).needsUpdate = true
     }
     img.onerror = () => {
-      console.warn('[EarthGlobe] 地球贴图加载失败，使用程序绘制')
-      textureLoaded.value = false
-      render()
+      console.warn('[EarthGlobe] 卡通贴图加载失败，使用回退贴图')
     }
     img.src = `file:///${path.replace(/\\/g, '/')}`
   } catch (e) {
     console.warn('[EarthGlobe] 贴图加载异常', e)
-    render()
   }
 }
 
-/** 经纬度 → 球面正交投影坐标 */
-function project(lonDeg: number, latDeg: number, cx: number, cy: number, r: number): { x: number; y: number; visible: boolean } {
-  // 相对经度
-  let relLon = lonDeg - lon.value
-  // 归一化到 [-180, 180]
-  while (relLon > 180) relLon -= 360
-  while (relLon < -180) relLon += 360
-
-  // 超过 90° 的在球体背面
-  if (Math.abs(relLon) > 90) return { x: 0, y: 0, visible: false }
-
-  const relLat = latDeg - lat.value
-  if (Math.abs(relLat) > 90) return { x: 0, y: 0, visible: false }
-
-  const lonRad = (relLon * Math.PI) / 180
-  const latRad = (relLat * Math.PI) / 180
-
-  const x = cx + r * Math.cos(latRad) * Math.sin(lonRad)
-  const y = cy - r * Math.sin(latRad)
-  const visible = Math.cos(latRad) * Math.cos(lonRad) > 0
-
-  return { x, y, visible }
+/** 应用地球旋转 */
+function applyRotation(): void {
+  if (!earthGroup) return
+  earthGroup.rotation.y = (-lon * Math.PI) / 180 - Math.PI / 2
+  earthGroup.rotation.x = (-lat * Math.PI) / 180
 }
 
-/** 绘制地球 */
-function render(): void {
-  const canvas = canvasRef.value
-  if (!canvas) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  const w = canvas.width
-  const h = canvas.height
-  const cx = w / 2
-  const cy = h / 2
-  const r = Math.min(w, h) / 2 - 10
-
-  ctx.clearRect(0, 0, w, h)
-
-  // 大气层光晕
-  const atmGrad = ctx.createRadialGradient(cx, cy, r * 0.95, cx, cy, r * 1.15)
-  atmGrad.addColorStop(0, 'rgba(125, 211, 252, 0.6)')
-  atmGrad.addColorStop(1, 'rgba(125, 211, 252, 0)')
-  ctx.beginPath()
-  ctx.arc(cx, cy, r * 1.15, 0, Math.PI * 2)
-  ctx.fillStyle = atmGrad
-  ctx.fill()
-
-  // 球体裁剪区域
-  ctx.save()
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.clip()
-
-  // 绘制地球贴图（像素级采样映射到球面）
-  if (textureLoaded.value && earthTexture.value) {
-    drawEarthTexture(ctx, cx, cy, r)
-  } else {
-    // 回退：程序绘制海洋底色
-    drawFallbackOcean(ctx, cx, cy, r)
-  }
-
-  // 绘制 6 章节场景（含小动物）
-  drawChapterScenes(ctx, cx, cy, r)
-
-  ctx.restore()
-
-  // 球体边缘暗化
-  const rimGrad = ctx.createRadialGradient(
-    cx - r * 0.3, cy - r * 0.3, r * 0.5,
-    cx, cy, r
-  )
-  rimGrad.addColorStop(0, 'rgba(0, 0, 0, 0)')
-  rimGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)')
-  rimGrad.addColorStop(1, 'rgba(0, 0, 0, 0.5)')
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = rimGrad
-  ctx.fill()
-
-  // 左上高光
-  const hlGrad = ctx.createRadialGradient(
-    cx - r * 0.35, cy - r * 0.35, 0,
-    cx - r * 0.35, cy - r * 0.35, r * 0.5
-  )
-  hlGrad.addColorStop(0, 'rgba(255, 255, 255, 0.25)')
-  hlGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = hlGrad
-  ctx.fill()
-
-  // 章节标记点
-  drawChapterMarkers(ctx, cx, cy, r)
-
-  // 选中指示器
-  drawSelectionIndicator(ctx, cx, cy, r)
-}
-
-/** 贴图像素数据缓存（避免每帧 getImageData） */
-let textureImageData: ImageData | null = null
-let textureImgW = 0
-let textureImgH = 0
-
-/** 从 Image 对象读取全部像素数据（仅一次） */
-function cacheTexturePixels(img: HTMLImageElement): void {
-  if (textureImgW === img.width && textureImgH === img.height && textureImageData) return
-  const canvas = document.createElement('canvas')
-  canvas.width = img.width
-  canvas.height = img.height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  ctx.drawImage(img, 0, 0)
-  textureImageData = ctx.getImageData(0, 0, img.width, img.height)
-  textureImgW = img.width
-  textureImgH = img.height
-}
-
-/** 用真实贴图绘制地球表面（putImageData 批量绘制，性能优化） */
-function drawEarthTexture(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-  const img = earthTexture.value
-  if (!img) return
-
-  // 缓存贴图像素数据
-  cacheTexturePixels(img)
-  if (!textureImageData) return
-
-  const data = textureImageData.data
-  const imgW = textureImgW
-  const imgH = textureImgH
-
-  // 创建输出 ImageData
-  const outSize = Math.ceil(r * 2) + 4
-  const outX = Math.floor(cx - r - 2)
-  const outY = Math.floor(cy - r - 2)
-  const out = ctx.createImageData(outSize, outSize)
-  const outData = out.data
-
-  // 逐像素采样
-  for (let py = -r; py <= r; py++) {
-    for (let px = -r; px <= r; px++) {
-      const distSq = px * px + py * py
-      if (distSq > r * r) continue
-
-      // 球面正交投影反推
-      const nx = px / r
-      const ny = py / r
-      const nz = Math.sqrt(1 - nx * nx - ny * ny)
-
-      // 球面坐标 → 经纬度
-      const latRad = Math.asin(-ny)
-      const lonRad = Math.atan2(nx, nz)
-
-      const worldLat = (latRad * 180) / Math.PI + lat.value
-      let worldLon = (lonRad * 180) / Math.PI + lon.value
-      while (worldLon > 180) worldLon -= 360
-      while (worldLon < -180) worldLon += 360
-
-      // 经纬度 → 贴图坐标
-      const tx = Math.floor(((worldLon + 180) / 360) * imgW)
-      const ty = Math.floor(((90 - worldLat) / 180) * imgH)
-
-      // 边界保护
-      if (tx < 0 || tx >= imgW || ty < 0 || ty >= imgH) continue
-
-      // 从缓存数组读色
-      const srcIdx = (ty * imgW + tx) * 4
-      const dstX = Math.floor(px + r + 2)
-      const dstY = Math.floor(py + r + 2)
-      const dstIdx = (dstY * outSize + dstX) * 4
-      outData[dstIdx] = data[srcIdx]
-      outData[dstIdx + 1] = data[srcIdx + 1]
-      outData[dstIdx + 2] = data[srcIdx + 2]
-      outData[dstIdx + 3] = 255
-    }
-  }
-
-  // 一次性绘制
-  ctx.putImageData(out, outX, outY)
-}
-
-/** 回退：程序绘制海洋 */
-function drawFallbackOcean(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-  const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r)
-  grad.addColorStop(0, '#4dabf7')
-  grad.addColorStop(0.4, '#228be6')
-  grad.addColorStop(0.8, '#1c4e80')
-  grad.addColorStop(1, '#0d2440')
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = grad
-  ctx.fill()
-}
-
-/** 绘制 6 章节场景（含小动物+装饰） */
-function drawChapterScenes(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-  for (const loc of chapterLocations) {
-    const center = project(loc.lon, loc.lat, cx, cy, r)
-    if (!center.visible) continue
-
-    const sceneR = r * 0.3
-    const isActive = loc.chapter === props.activeChapter
-
-    // 获取该章节的动物配置
-    const chapter = props.chapters.find((c) => c.id === loc.chapter)
-    const animals = chapter?.animals ?? []
-
-    drawSceneWithAnimals(ctx, center.x, center.y, sceneR, loc.theme, isActive, animals)
-  }
-}
-
-/** 绘制场景+小动物
- * 绘制顺序：选中光晕 → 圆形裁剪 → 半透明底色(让地球贴图透出来) → 精致装饰 → 大尺寸小动物
- */
-function drawSceneWithAnimals(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, radius: number,
-  theme: string, active: boolean,
-  animals: AnimalType[]
-): void {
-  ctx.save()
-
-  // 选中高亮（外圈光晕）
-  if (active) {
-    ctx.beginPath()
-    ctx.arc(x, y, radius * 1.3, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.25)'
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.95)'
-    ctx.lineWidth = 2.5
-    ctx.stroke()
-  } else {
-    ctx.beginPath()
-    ctx.arc(x, y, radius * 1.04, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-  }
-
-  // 圆形裁剪
-  ctx.beginPath()
-  ctx.arc(x, y, radius, 0, Math.PI * 2)
-  ctx.clip()
-
-  // 半透明场景底色（让地球贴图透出来，又有场景氛围）
-  drawSceneBackground(ctx, x, y, radius, theme)
-
-  // 精致装饰元素（农舍/树木/岩石/波纹等）
-  drawSceneDecor(ctx, x, y, radius, theme)
-
-  // 绘制 2 只小动物（取该章节前 2 种动物）—— 更大更清晰
-  const animalSize = Math.floor(radius * 0.7)
-  const scale = Math.max(1, Math.floor(animalSize / PIXEL_SIZE))
-  const drawSize = scale * PIXEL_SIZE
-
-  for (let i = 0; i < Math.min(2, animals.length); i++) {
-    const ax = x - radius * 0.42 + i * radius * 0.84 - drawSize / 2
-    const ay = y + radius * 0.2 - drawSize / 2
-    drawAnimal(ctx, animals[i], 'idle', scale, ax, ay)
-  }
-
-  ctx.restore()
-}
-
-/** 按主题绘制半透明场景底色（不盖死地球贴图） */
-function drawSceneBackground(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, radius: number,
-  theme: string
-): void {
-  const themeColors: Record<string, string> = {
-    farm: 'rgba(124, 179, 66, 0.35)',
-    forest: 'rgba(85, 139, 47, 0.35)',
-    wild: 'rgba(109, 76, 65, 0.4)',
-    bird: 'rgba(255, 182, 193, 0.4)',
-    ocean: 'rgba(25, 118, 210, 0.25)',
-    mix: 'rgba(94, 53, 177, 0.35)'
-  }
-  ctx.fillStyle = themeColors[theme] ?? 'rgba(255, 255, 255, 0.2)'
-  ctx.beginPath()
-  ctx.arc(x, y, radius, 0, Math.PI * 2)
-  ctx.fill()
-}
-
-/** 按主题绘制场景装饰（精致版，不填满背景，装饰在场景上半部） */
-function drawSceneDecor(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, radius: number,
-  theme: string
-): void {
-  switch (theme) {
-    case 'farm': {
-      // 农舍：墙体 + 红屋顶 + 门 + 窗 + 烟囱
-      const hx = x - radius * 0.32
-      const hy = y - radius * 0.35
-      const hw = radius * 0.5
-      const hh = radius * 0.4
-      // 墙体
-      ctx.fillStyle = '#f5e6c8'
-      ctx.fillRect(hx, hy + hh * 0.35, hw, hh * 0.65)
-      // 屋顶
-      ctx.fillStyle = '#c62828'
-      ctx.beginPath()
-      ctx.moveTo(hx - hw * 0.1, hy + hh * 0.4)
-      ctx.lineTo(hx + hw / 2, hy)
-      ctx.lineTo(hx + hw + hw * 0.1, hy + hh * 0.4)
-      ctx.closePath()
-      ctx.fill()
-      // 烟囱
-      ctx.fillStyle = '#8d6e63'
-      ctx.fillRect(hx + hw * 0.7, hy - hh * 0.05, hw * 0.12, hh * 0.25)
-      // 门
-      ctx.fillStyle = '#5d4037'
-      ctx.fillRect(hx + hw * 0.35, hy + hh * 0.55, hw * 0.3, hh * 0.45)
-      // 窗
-      ctx.fillStyle = '#81d4fa'
-      ctx.fillRect(hx + hw * 0.05, hy + hh * 0.5, hw * 0.22, hh * 0.22)
-      ctx.strokeStyle = '#5d4037'
-      ctx.lineWidth = 1
-      ctx.strokeRect(hx + hw * 0.05, hy + hh * 0.5, hw * 0.22, hh * 0.22)
-      // 栅栏（右侧）
-      ctx.fillStyle = '#fff8e1'
-      for (let i = 0; i < 3; i++) {
-        ctx.fillRect(x + radius * 0.3 + i * radius * 0.12, y - radius * 0.2, radius * 0.04, radius * 0.3)
-      }
-      ctx.fillRect(x + radius * 0.3, y - radius * 0.1, radius * 0.32, radius * 0.04)
-      break
-    }
-    case 'bird': {
-      // 鸟类：鸟巢 + 鸟蛋 + 羽毛
-      const nx = x - radius * 0.1
-      const ny = y - radius * 0.05
-      // 鸟巢（碗形）
-      ctx.fillStyle = '#6d4c41'
-      ctx.beginPath()
-      ctx.arc(nx, ny, radius * 0.32, 0, Math.PI)
-      ctx.fill()
-      // 鸟巢纹理（横向编织线）
-      ctx.strokeStyle = '#4e342e'
-      ctx.lineWidth = 1.2
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath()
-        ctx.arc(nx, ny, radius * (0.2 + i * 0.06), 0, Math.PI)
-        ctx.stroke()
-      }
-      // 鸟蛋（3颗白色椭圆）
-      ctx.fillStyle = '#fffde7'
-      ctx.beginPath()
-      ctx.ellipse(nx - radius * 0.12, ny - radius * 0.02, radius * 0.07, radius * 0.1, -0.3, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.ellipse(nx + radius * 0.05, ny - radius * 0.05, radius * 0.07, radius * 0.1, 0.2, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.ellipse(nx + radius * 0.18, ny - radius * 0.02, radius * 0.06, radius * 0.09, 0.4, 0, Math.PI * 2)
-      ctx.fill()
-      // 羽毛（右上，彩色斜线）
-      ctx.strokeStyle = '#ec407a'
-      ctx.lineWidth = 2.5
-      ctx.beginPath()
-      ctx.moveTo(x + radius * 0.35, y - radius * 0.1)
-      ctx.lineTo(x + radius * 0.5, y - radius * 0.4)
-      ctx.stroke()
-      ctx.strokeStyle = '#42a5f5'
-      ctx.beginPath()
-      ctx.moveTo(x + radius * 0.42, y - radius * 0.08)
-      ctx.lineTo(x + radius * 0.55, y - radius * 0.32)
-      ctx.stroke()
-      break
-    }
-    case 'forest': {
-      // 森林：两棵多层树 + 草丛
-      // 左树
-      drawTree(ctx, x - radius * 0.38, y - radius * 0.15, radius * 0.22)
-      // 右树
-      drawTree(ctx, x + radius * 0.38, y - radius * 0.15, radius * 0.2)
-      // 草丛
-      ctx.fillStyle = '#33691e'
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath()
-        ctx.arc(x - radius * 0.15 + i * radius * 0.15, y - radius * 0.05, radius * 0.06, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      break
-    }
-    case 'wild': {
-      // 野生丛林：多边形岩石 + 灌木
-      // 大岩石
-      ctx.fillStyle = '#616161'
-      ctx.beginPath()
-      ctx.moveTo(x - radius * 0.45, y - radius * 0.05)
-      ctx.lineTo(x - radius * 0.3, y - radius * 0.35)
-      ctx.lineTo(x - radius * 0.05, y - radius * 0.3)
-      ctx.lineTo(x + radius * 0.1, y - radius * 0.1)
-      ctx.lineTo(x - radius * 0.1, y + radius * 0.05)
-      ctx.closePath()
-      ctx.fill()
-      // 岩石高光
-      ctx.fillStyle = '#9e9e9e'
-      ctx.beginPath()
-      ctx.moveTo(x - radius * 0.3, y - radius * 0.35)
-      ctx.lineTo(x - radius * 0.1, y - radius * 0.3)
-      ctx.lineTo(x - radius * 0.2, y - radius * 0.18)
-      ctx.closePath()
-      ctx.fill()
-      // 小岩石
-      ctx.fillStyle = '#424242'
-      ctx.beginPath()
-      ctx.moveTo(x + radius * 0.2, y - radius * 0.1)
-      ctx.lineTo(x + radius * 0.4, y - radius * 0.25)
-      ctx.lineTo(x + radius * 0.5, y - radius * 0.05)
-      ctx.lineTo(x + radius * 0.3, y + radius * 0.02)
-      ctx.closePath()
-      ctx.fill()
-      // 灌木
-      ctx.fillStyle = '#33691e'
-      ctx.beginPath()
-      ctx.arc(x + radius * 0.35, y - radius * 0.3, radius * 0.1, 0, Math.PI * 2)
-      ctx.arc(x + radius * 0.45, y - radius * 0.32, radius * 0.09, 0, Math.PI * 2)
-      ctx.fill()
-      break
-    }
-    case 'ocean': {
-      // 海洋：波纹 + 气泡（不画背景，直接在地球海洋上）
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-      ctx.lineWidth = 1.8
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath()
-        const wy = y - radius * 0.35 + i * radius * 0.12
-        ctx.moveTo(x - radius * 0.45, wy)
-        ctx.quadraticCurveTo(x - radius * 0.2, wy - radius * 0.05, x, wy)
-        ctx.quadraticCurveTo(x + radius * 0.2, wy + radius * 0.05, x + radius * 0.45, wy)
-        ctx.stroke()
-      }
-      // 气泡
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-      const bubbles = [
-        { bx: x - radius * 0.3, by: y - radius * 0.05, s: 0.06 },
-        { bx: x + radius * 0.35, by: y - radius * 0.1, s: 0.05 },
-        { bx: x - radius * 0.1, by: y + radius * 0.05, s: 0.04 },
-        { bx: x + radius * 0.15, by: y + radius * 0.02, s: 0.05 }
-      ]
-      for (const b of bubbles) {
-        ctx.beginPath()
-        ctx.arc(b.bx, b.by, radius * b.s, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      break
-    }
-    case 'mix': {
-      // 综合：双峰雪山 + 松树
-      // 后山（大）
-      ctx.fillStyle = '#eceff1'
-      ctx.beginPath()
-      ctx.moveTo(x - radius * 0.5, y - radius * 0.02)
-      ctx.lineTo(x - radius * 0.1, y - radius * 0.45)
-      ctx.lineTo(x + radius * 0.3, y - radius * 0.02)
-      ctx.closePath()
-      ctx.fill()
-      // 山影
-      ctx.fillStyle = '#b0bec5'
-      ctx.beginPath()
-      ctx.moveTo(x - radius * 0.1, y - radius * 0.45)
-      ctx.lineTo(x + radius * 0.1, y - radius * 0.02)
-      ctx.lineTo(x - radius * 0.1, y - radius * 0.02)
-      ctx.closePath()
-      ctx.fill()
-      // 雪顶
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      ctx.moveTo(x - radius * 0.2, y - radius * 0.28)
-      ctx.lineTo(x - radius * 0.1, y - radius * 0.45)
-      ctx.lineTo(x, y - radius * 0.28)
-      ctx.lineTo(x - radius * 0.13, y - radius * 0.22)
-      ctx.closePath()
-      ctx.fill()
-      // 前山（小）
-      ctx.fillStyle = '#cfd8dc'
-      ctx.beginPath()
-      ctx.moveTo(x + radius * 0.1, y - radius * 0.02)
-      ctx.lineTo(x + radius * 0.4, y - radius * 0.3)
-      ctx.lineTo(x + radius * 0.55, y - radius * 0.02)
-      ctx.closePath()
-      ctx.fill()
-      // 松树
-      ctx.fillStyle = '#1b5e20'
-      ctx.beginPath()
-      ctx.moveTo(x - radius * 0.35, y - radius * 0.05)
-      ctx.lineTo(x - radius * 0.28, y - radius * 0.3)
-      ctx.lineTo(x - radius * 0.21, y - radius * 0.05)
-      ctx.closePath()
-      ctx.fill()
-      ctx.fillStyle = '#5d4037'
-      ctx.fillRect(x - radius * 0.295, y - radius * 0.05, radius * 0.03, radius * 0.08)
-      break
-    }
-  }
-}
-
-/** 绘制一棵多层树 */
-function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
-  // 树干
-  ctx.fillStyle = '#5d4037'
-  ctx.fillRect(x - size * 0.08, y, size * 0.16, size * 0.4)
-  // 树冠（三层三角）
-  ctx.fillStyle = '#2e7d32'
-  for (let i = 0; i < 3; i++) {
-    const ty = y - i * size * 0.3
-    const tw = size * (0.7 - i * 0.12)
-    ctx.beginPath()
-    ctx.moveTo(x - tw, ty)
-    ctx.lineTo(x, ty - size * 0.5)
-    ctx.lineTo(x + tw, ty)
-    ctx.closePath()
-    ctx.fill()
-  }
-  // 高光
-  ctx.fillStyle = '#43a047'
-  ctx.beginPath()
-  ctx.moveTo(x - size * 0.1, y - size * 0.2)
-  ctx.lineTo(x, y - size * 0.5)
-  ctx.lineTo(x + size * 0.05, y - size * 0.2)
-  ctx.closePath()
-  ctx.fill()
-}
-
-/** 绘制章节标记点 */
-function drawChapterMarkers(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-  for (const loc of chapterLocations) {
-    const p = project(loc.lon, loc.lat, cx, cy, r)
-    if (!p.visible) continue
-
-    const isActive = loc.chapter === props.activeChapter
-    const markerR = isActive ? 14 : 10
-
-    // 标记位于场景上方
-    const mx = p.x
-    const my = p.y - r * 0.3
-
-    // 背景圆
-    ctx.beginPath()
-    ctx.arc(mx, my, markerR, 0, Math.PI * 2)
-    ctx.fillStyle = isActive ? '#ffd700' : 'rgba(255, 255, 255, 0.95)'
-    ctx.fill()
-    ctx.strokeStyle = '#fff'
-    ctx.lineWidth = 2
-    ctx.stroke()
-
-    // emoji
-    ctx.font = `${markerR}px sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(loc.emoji, mx, my)
-  }
-}
-
-/** 选中章节脉冲指示器 */
-function drawSelectionIndicator(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+/** 更新选中章节光环位置 */
+function updateActiveRing(): void {
+  if (!activeRing || !scene) return
   const loc = chapterLocations.find((c) => c.chapter === props.activeChapter)
   if (!loc) return
-  const p = project(loc.lon, loc.lat, cx, cy, r)
-  if (!p.visible) return
-
-  const t = (Date.now() % 1500) / 1500
-  const pulseR = r * 0.22 + t * r * 0.08
-  ctx.beginPath()
-  ctx.arc(p.x, p.y, pulseR, 0, Math.PI * 2)
-  ctx.strokeStyle = `rgba(255, 215, 0, ${0.8 - t * 0.8})`
-  ctx.lineWidth = 3
-  ctx.stroke()
+  const pos = latLonToWorld(loc.lat, loc.lon, 1.06)
+  // 光环在场景级，需用地球组的旋转把本地坐标转为世界坐标（先强制更新矩阵，避免首帧滞后）
+  earthGroup?.updateMatrixWorld(true)
+  const world = pos.clone().applyMatrix4(earthGroup?.matrixWorld ?? new THREE.Matrix4())
+  activeRing.position.copy(world)
+  const sc = 0.62 + 0.1 * Math.sin((Date.now() % 1200) / 1200 * Math.PI * 2)
+  activeRing.scale.set(sc, sc, 1)
 }
 
-/** 拖动旋转 */
-function startDrag(e: MouseEvent): void {
-  dragging.value = true
+/** 事件绑定 */
+function bindEvents(): void {
+  const el = renderer?.domElement
+  if (!el) return
+  el.addEventListener('mousedown', onMouseDown)
+  el.addEventListener('mousemove', onMouseMove)
+  el.addEventListener('mouseup', onMouseUp)
+  el.addEventListener('mouseleave', onMouseLeave)
+  el.addEventListener('touchstart', onTouchStart, { passive: true })
+  el.addEventListener('touchmove', onTouchMove, { passive: true })
+  el.addEventListener('touchend', onTouchEnd, { passive: true })
+}
+
+/** 事件坐标 → NDC */
+function toNDC(clientX: number, clientY: number): THREE.Vector2 {
+  const el = renderer?.domElement
+  const rect = el?.getBoundingClientRect()
+  if (!el || !rect) return new THREE.Vector2(-2, -2)
+  return new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -((clientY - rect.top) / rect.height) * 2 + 1
+  )
+}
+
+/** 射线检测命中的章节标记 */
+function intersectMarker(clientX: number, clientY: number): THREE.Sprite | null {
+  if (!camera || markerSprites.length === 0) return null
+  pointer.copy(toNDC(clientX, clientY))
+  raycaster.setFromCamera(pointer, camera)
+  const hits = raycaster.intersectObjects(markerSprites, false)
+  return hits.length > 0 ? (hits[0].object as THREE.Sprite) : null
+}
+
+function onMouseDown(e: MouseEvent): void {
+  dragging = true
+  moved = false
+  downX = e.clientX
+  downY = e.clientY
   lastX = e.clientX
   lastY = e.clientY
+  targetLon = null
+  targetLat = null
 }
 
-function onDrag(e: MouseEvent): void {
-  if (!dragging.value) return
-  const dx = e.clientX - lastX
-  const dy = e.clientY - lastY
-  lon.value = (lon.value + dx * 0.5 + 360) % 360
-  if (lon.value > 180) lon.value -= 360
-  lat.value = Math.max(-85, Math.min(85, lat.value - dy * 0.5))
-  lastX = e.clientX
-  lastY = e.clientY
+let lastX = 0
+let lastY = 0
+function onMouseMove(e: MouseEvent): void {
+  if (dragging) {
+    const dx = e.clientX - lastX
+    const dy = e.clientY - lastY
+    if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 4) moved = true
+    lon = (lon + dx * 0.5 + 360) % 360
+    if (lon > 180) lon -= 360
+    lat = Math.max(-85, Math.min(85, lat - dy * 0.5))
+    lastX = e.clientX
+    lastY = e.clientY
+    return
+  }
+  // 悬停：命中标记则播放章节动物叫声
+  const hit = intersectMarker(e.clientX, e.clientY)
+  if (hit) {
+    const idx = markerSprites.indexOf(hit)
+    if (idx >= 0 && idx !== lastHoverChapter) {
+      lastHoverChapter = idx
+      const loc = chapterLocations[idx]
+      emitHoverAnimal(loc.chapter)
+    }
+  } else {
+    lastHoverChapter = -1
+  }
 }
 
-function endDrag(): void {
-  dragging.value = false
+function onMouseUp(e: MouseEvent): void {
+  if (!dragging) return
+  dragging = false
+  if (!moved) {
+    // 点击选中章节
+    const hit = intersectMarker(e.clientX, e.clientY)
+    if (hit) {
+      const idx = markerSprites.indexOf(hit)
+      if (idx >= 0) emit('select', chapterLocations[idx].chapter)
+    }
+  }
 }
 
-/** 旋转到指定章节（平滑动画） */
+function onMouseLeave(): void {
+  dragging = false
+  lastHoverChapter = -1
+}
+
+function onTouchStart(e: TouchEvent): void {
+  const t = e.touches[0]
+  onMouseDown({ clientX: t.clientX, clientY: t.clientY } as MouseEvent)
+}
+function onTouchMove(e: TouchEvent): void {
+  const t = e.touches[0]
+  onMouseMove({ clientX: t.clientX, clientY: t.clientY } as MouseEvent)
+}
+function onTouchEnd(e: TouchEvent): void {
+  const t = e.changedTouches[0]
+  onMouseUp({ clientX: t.clientX, clientY: t.clientY } as MouseEvent)
+}
+
+/** 悬停某章节时，播放该章节第一种动物叫声 */
+function emitHoverAnimal(chapter: number): void {
+  const ch = props.chapters.find((c) => c.id === chapter)
+  const animal = ch?.animals?.[0]
+  if (animal) emit('hover-animal', animal)
+}
+
+/** 动画循环 */
+function animLoop(): void {
+  if (disposed) return
+
+  // 平滑旋转到目标
+  if (targetLon != null && targetLat != null) {
+    const dLon = targetLon - lon
+    const dLat = targetLat - lat
+    if (Math.abs(dLon) < 0.3 && Math.abs(dLat) < 0.3) {
+      lon = targetLon
+      lat = targetLat
+      targetLon = null
+      targetLat = null
+    } else {
+      lon += dLon * 0.08
+      lat += dLat * 0.08
+    }
+  } else if (!dragging) {
+    // 空闲自动缓慢旋转
+    lon += 0.08
+    if (lon > 180) lon -= 360
+  }
+
+  // 云层缓慢漂移
+  if (clouds) clouds.rotation.y += 0.0004
+
+  applyRotation()
+  updateActiveRing()
+
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera)
+  }
+  animFrame = requestAnimationFrame(animLoop)
+}
+
+/** 平滑旋转到指定章节 */
 function rotateToChapter(chapter: number): void {
   const loc = chapterLocations.find((c) => c.chapter === chapter)
   if (!loc) return
-  animateRotate(loc.lon, loc.lat)
-}
-
-function animateRotate(targetLon: number, targetLat: number): void {
-  const startLon = lon.value
-  const startLat = lat.value
-  // 选择最短旋转路径
-  let dLon = targetLon - startLon
+  let dLon = loc.lon - lon
   while (dLon > 180) dLon -= 360
   while (dLon < -180) dLon += 360
-
-  const duration = 800
-  const startTime = Date.now()
-
-  function step() {
-    const elapsed = Date.now() - startTime
-    const t = Math.min(1, elapsed / duration)
-    const ease = 1 - Math.pow(1 - t, 3)
-    lon.value = startLon + dLon * ease
-    lat.value = startLat + (targetLat - startLat) * ease
-    if (t < 1) {
-      requestAnimationFrame(step)
-    }
-  }
-  step()
+  targetLon = lon + dLon
+  targetLat = loc.lat
 }
 
 function prevChapter(): void {
@@ -754,29 +595,51 @@ function nextChapter(): void {
 }
 
 function rotateLeft(): void {
-  lon.value -= 30
-  if (lon.value < -180) lon.value += 360
+  targetLon = null
+  targetLat = null
+  lon -= 30
+  if (lon < -180) lon += 360
 }
 
 function rotateRight(): void {
-  lon.value += 30
-  if (lon.value > 180) lon.value -= 360
+  targetLon = null
+  targetLat = null
+  lon += 30
+  if (lon > 180) lon -= 360
 }
 
-/** 动画循环（脉冲指示器） */
-let animFrame = 0
-function animLoop() {
-  render()
-  animFrame = requestAnimationFrame(animLoop)
+/** 清理 Three.js 资源 */
+function dispose(): void {
+  disposed = true
+  cancelAnimationFrame(animFrame)
+  scene?.traverse((obj) => {
+    const mesh = obj as THREE.Mesh
+    if (mesh.geometry) mesh.geometry.dispose()
+    const mat = (mesh as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined
+    if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
+    else if (mat) mat.dispose()
+  })
+  renderer?.dispose()
+  if (renderer?.domElement && containerRef.value) {
+    containerRef.value.removeChild(renderer.domElement)
+  }
+  renderer = null
+  scene = null
+  camera = null
+  earthGroup = null
+  earthMesh = null
+  clouds = null
+  halo = null
+  activeRing = null
+  markerSprites = []
 }
 
-onMounted(async () => {
-  await loadEarthTexture()
-  animLoop()
+onMounted(() => {
+  initScene()
 })
 
 onUnmounted(() => {
-  cancelAnimationFrame(animFrame)
+  dispose()
 })
 
 watch(
@@ -796,14 +659,19 @@ watch(
   gap: 8px;
 }
 
-.earth-canvas {
-  display: block;
+.earth-container {
+  position: relative;
   cursor: grab;
   border-radius: 50%;
 }
 
-.earth-canvas:active {
+.earth-container:active {
   cursor: grabbing;
+}
+
+.earth-container canvas {
+  display: block;
+  border-radius: 50%;
 }
 
 .chapter-info {

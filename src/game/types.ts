@@ -4,21 +4,29 @@
  */
 
 /**
- * 20 种动物类型（v4：扁平方块像素图版）
- * 主色均匀分布色环，每种动物唯一模型无变种
- * 按章节分组：
- *  第1章 家畜：sheep / pig / chicken / dog
- *  第2章 野生：tiger / lion / bear / fox
- *  第3章 森林：frog / crocodile / elephant / panda
- *  第4章 鸟类：flamingo / peacock / penguin / parrot
- *  第5章 海洋：fish / whale / octopus / jellyfish
+ * 48 种动物类型（v9：图片素材版）
+ * 使用 shoulege-shou-animals-assets 素材库中的图片（static 静态 / active 悬停动态）
+ * 按章节分组，每章 8 种：
+ *  第1章 家畜：sheep / pig / chicken / cow / horse / goat / duck / rooster
+ *  第2章 野兽：tiger / lion / bear / wolf / fox / zebra / camel / giraffe
+ *  第3章 森林：monkey / panda / deer / moose / kangaroo / koala / squirrel / raccoon
+ *  第4章 小动物：rabbit / cat / dog / otter / badger / beaver / hedgehog / skunk
+ *  第5章 海洋：fish / whale / dolphin / octopus / jellyfish / turtle / crab / seahorse
+ *  第6章 综合：hippo / rhino / elephant / frog / seal / owl / goose / penguin
  */
 export type AnimalType =
-  | 'sheep' | 'pig' | 'chicken' | 'dog' | 'horse' | 'cow'        // 第1章 家畜
-  | 'tiger' | 'lion' | 'bear' | 'fox' | 'wolf' | 'eagle'          // 第2章 野生
-  | 'frog' | 'crocodile' | 'elephant' | 'panda' | 'monkey' | 'deer' // 第3章 森林
-  | 'flamingo' | 'peacock' | 'penguin' | 'parrot' | 'owl' | 'swan' // 第4章 鸟类
-  | 'fish' | 'whale' | 'octopus' | 'jellyfish' | 'dolphin' | 'turtle' // 第5章 海洋
+  // 第1章 家畜
+  | 'sheep' | 'pig' | 'chicken' | 'cow' | 'horse' | 'goat' | 'duck' | 'rooster'
+  // 第2章 野兽
+  | 'tiger' | 'lion' | 'bear' | 'wolf' | 'fox' | 'zebra' | 'camel' | 'giraffe'
+  // 第3章 森林
+  | 'monkey' | 'panda' | 'deer' | 'moose' | 'kangaroo' | 'koala' | 'squirrel' | 'raccoon'
+  // 第4章 小动物
+  | 'rabbit' | 'cat' | 'dog' | 'otter' | 'badger' | 'beaver' | 'hedgehog' | 'skunk'
+  // 第5章 海洋
+  | 'fish' | 'whale' | 'dolphin' | 'octopus' | 'jellyfish' | 'turtle' | 'crab' | 'seahorse'
+  // 第6章 综合
+  | 'hippo' | 'rhino' | 'elephant' | 'frog' | 'seal' | 'owl' | 'goose' | 'penguin'
 
 /** 游戏模式：3消 / 4消 / 闯关 */
 export type GameMode = 'classic3' | 'classic4' | 'level'
@@ -31,6 +39,15 @@ export type PropType = 'undo' | 'shuffle' | 'hint'
 
 /** 章节机制类型 */
 export type MechanicType = 'moody' | 'vine' | 'sleepy' | 'hidden' | 'bubble'
+
+/** 机制变更事件类型（通知视图层播动画） */
+export type MechanicEvent =
+  /** moody/sleepy 通过消除而解除（乌云散/醒来） */
+  | { kind: 'resolved'; tileId: number; type: MechanicType }
+  /** vine/bubble 被点击破除（藤断裂/气泡破） */
+  | { kind: 'broken'; tileId: number; type: MechanicType }
+  /** hidden 翻开（问号消失露出动物） */
+  | { kind: 'revealed'; tileId: number }
 
 /** 牌面机制状态 */
 export interface MechanicState {
@@ -142,4 +159,6 @@ export interface GameState {
   clickRemaining: number
   /** 最近一次消除解析的机制列表（供音效使用） */
   lastResolvedMechanics: string[]
+  /** 最近一次操作产生的机制变更事件（供视图层播动画），每次 pickTile 后重置 */
+  lastMechanicEvents: MechanicEvent[]
 }

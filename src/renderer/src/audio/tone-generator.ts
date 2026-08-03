@@ -222,11 +222,6 @@ class ToneGenerator {
       this.playNoiseSound(700, 300, 0.1)
       return
     }
-    if (animal === 'crocodile') {
-      this.playSequence(seq)
-      this.playNoiseSound(400, 600, 0.06)
-      return
-    }
     if (animal === 'fish') {
       this.playSequence(seq)
       this.playNoiseSound(200, 2000, 0.05)
@@ -483,10 +478,6 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
     { freq: 400, duration: 80, type: 'sine', volume: 0.15, slideTo: 500, vibrato: 10, vibratoDepth: 12 },
     { freq: 500, duration: 100, type: 'sine', volume: 0.15, slideTo: 400 }
   ],
-  // 鳄鱼：150→120Hz 低沉嘶嘶，锯齿波（+噪声由 playAnimalSound 添加）
-  crocodile: [
-    { freq: 150, duration: 300, type: 'sawtooth', volume: 0.18, slideTo: 120, vibrato: 5, vibratoDepth: 6 }
-  ],
   // 大象：80→60Hz 超低频长鸣，锯齿+颤音
   elephant: [
     { freq: 80, duration: 800, type: 'sawtooth', volume: 0.25, slideTo: 60, vibrato: 2, vibratoDepth: 3 }
@@ -496,30 +487,11 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
     { freq: 400, duration: 180, type: 'triangle', volume: 0.16, slideTo: 320, vibrato: 8, vibratoDepth: 10 },
     { freq: 320, duration: 220, type: 'triangle', volume: 0.15, vibrato: 6, vibratoDepth: 8 }
   ],
-  // 火烈鸟：真实鹅式鸣叫 Honk，中频响亮，700→800→900Hz 方波，有力度
-  flamingo: [
-    { freq: 700, duration: 100, type: 'square', volume: 0.14 },
-    { freq: 800, duration: 100, type: 'square', volume: 0.14 },
-    { freq: 900, duration: 150, type: 'square', volume: 0.14, slideTo: 750, vibrato: 4, vibratoDepth: 5 }
-  ],
-  // 孔雀：真实孔雀叫 May-aw，像猫叫，响亮有力，700→1000→700Hz 方波+颤音
-  peacock: [
-    { freq: 700, duration: 100, type: 'square', volume: 0.16, slideTo: 1000, vibrato: 4, vibratoDepth: 6 },
-    { freq: 1000, duration: 120, type: 'square', volume: 0.16, slideTo: 700, vibrato: 4, vibratoDepth: 6 },
-    { freq: 700, duration: 150, type: 'square', volume: 0.15, vibrato: 3, vibratoDepth: 5 }
-  ],
   // 企鹅：真实企鹅叫 Honk-bray，类似驴叫，中频有节奏群鸣，600→800Hz 颤音
   penguin: [
     { freq: 650, duration: 100, type: 'square', volume: 0.15, vibrato: 6, vibratoDepth: 8 },
     { freq: 750, duration: 100, type: 'square', volume: 0.15, vibrato: 6, vibratoDepth: 8 },
     { freq: 700, duration: 120, type: 'square', volume: 0.15, slideTo: 600, vibrato: 5, vibratoDepth: 7 }
-  ],
-  // 鹦鹉：真实鹦鹉叫 Squawk，高频刺耳多变，锯齿波，1200→1600→1000Hz 交替
-  parrot: [
-    { freq: 1200, duration: 50, type: 'sawtooth', volume: 0.13, slideTo: 1600 },
-    { freq: 1100, duration: 55, type: 'sawtooth', volume: 0.13, slideTo: 1400 },
-    { freq: 1400, duration: 55, type: 'sawtooth', volume: 0.13, slideTo: 1000 },
-    { freq: 1000, duration: 70, type: 'sawtooth', volume: 0.13, vibrato: 8, vibratoDepth: 6 }
   ],
   // 小鱼：1000→1200→800Hz 滑音+颤音（+噪声由 playAnimalSound 添加）
   fish: [
@@ -554,10 +526,6 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
     { freq: 500, duration: 300, type: 'sawtooth', volume: 0.12, slideTo: 800 },
     { freq: 700, duration: 250, type: 'sawtooth', volume: 0.1, slideTo: 600 }
   ],
-  eagle: [
-    { freq: 1200, duration: 200, type: 'sine', volume: 0.1, slideTo: 1800 },
-    { freq: 1600, duration: 150, type: 'sine', volume: 0.08, slideTo: 1400 }
-  ],
   monkey: [
     { freq: 600, duration: 80, type: 'sawtooth', volume: 0.12, slideTo: 800 },
     { freq: 700, duration: 80, type: 'sawtooth', volume: 0.1, slideTo: 900 },
@@ -571,10 +539,6 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
     { freq: 450, duration: 300, type: 'sine', volume: 0.1, vibrato: 2, vibratoDepth: 5 },
     { freq: 420, duration: 300, type: 'sine', volume: 0.08 }
   ],
-  swan: [
-    { freq: 350, duration: 400, type: 'triangle', volume: 0.08, slideTo: 500 },
-    { freq: 500, duration: 300, type: 'triangle', volume: 0.06 }
-  ],
   dolphin: [
     { freq: 2000, duration: 100, type: 'sine', volume: 0.12, slideTo: 3000 },
     { freq: 2500, duration: 80, type: 'sine', volume: 0.1, slideTo: 3500 }
@@ -582,6 +546,133 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
   turtle: [
     { freq: 150, duration: 600, type: 'sawtooth', volume: 0.1, slideTo: 120, vibrato: 1, vibratoDepth: 5 },
     { freq: 130, duration: 400, type: 'sawtooth', volume: 0.08 }
+  ],
+  // 山羊：中频咩叫，300→260Hz 颤音
+  goat: [
+    { freq: 300, duration: 200, type: 'sawtooth', volume: 0.14, slideTo: 260, vibrato: 6, vibratoDepth: 8 },
+    { freq: 260, duration: 250, type: 'sawtooth', volume: 0.12, vibrato: 5, vibratoDepth: 7 }
+  ],
+  // 小鸭：高频嘎嘎，1000→1200Hz 断续
+  duck: [
+    { freq: 1000, duration: 80, type: 'square', volume: 0.12, slideTo: 1200 },
+    { freq: 1100, duration: 80, type: 'square', volume: 0.12, slideTo: 900 },
+    { freq: 1000, duration: 100, type: 'square', volume: 0.12 }
+  ],
+  // 公鸡：嘹亮喔喔啼，600→900→700Hz 方波
+  rooster: [
+    { freq: 600, duration: 120, type: 'square', volume: 0.14, slideTo: 900 },
+    { freq: 900, duration: 120, type: 'square', volume: 0.14, slideTo: 700 },
+    { freq: 700, duration: 200, type: 'square', volume: 0.13, vibrato: 4, vibratoDepth: 5 }
+  ],
+  // 斑马：短促嘶鸣，500→700Hz 锯齿
+  zebra: [
+    { freq: 500, duration: 120, type: 'sawtooth', volume: 0.13, slideTo: 700 },
+    { freq: 650, duration: 150, type: 'sawtooth', volume: 0.11, slideTo: 550 }
+  ],
+  // 骆驼：低沉咕噜，200→160Hz 锯齿
+  camel: [
+    { freq: 200, duration: 350, type: 'sawtooth', volume: 0.14, slideTo: 160, vibrato: 3, vibratoDepth: 5 },
+    { freq: 170, duration: 300, type: 'sawtooth', volume: 0.12 }
+  ],
+  // 长颈鹿：轻柔低鸣，350→300Hz 正弦
+  giraffe: [
+    { freq: 350, duration: 250, type: 'sine', volume: 0.1, slideTo: 300, vibrato: 3, vibratoDepth: 6 },
+    { freq: 320, duration: 250, type: 'sine', volume: 0.08 }
+  ],
+  // 驼鹿：低吼，180→150Hz 锯齿
+  moose: [
+    { freq: 180, duration: 350, type: 'sawtooth', volume: 0.14, slideTo: 150, vibrato: 4, vibratoDepth: 6 },
+    { freq: 160, duration: 300, type: 'sawtooth', volume: 0.12 }
+  ],
+  // 袋鼠：短促哔哔，800→600Hz 方波
+  kangaroo: [
+    { freq: 800, duration: 90, type: 'square', volume: 0.12, slideTo: 600 },
+    { freq: 700, duration: 90, type: 'square', volume: 0.12, slideTo: 500 }
+  ],
+  // 考拉：低沉哼鸣，300→260Hz 三角
+  koala: [
+    { freq: 300, duration: 250, type: 'triangle', volume: 0.12, slideTo: 260, vibrato: 4, vibratoDepth: 6 },
+    { freq: 270, duration: 250, type: 'triangle', volume: 0.1 }
+  ],
+  // 松鼠：高频吱吱，1500→1800Hz 方波
+  squirrel: [
+    { freq: 1500, duration: 60, type: 'square', volume: 0.1, slideTo: 1800 },
+    { freq: 1700, duration: 60, type: 'square', volume: 0.1, slideTo: 1400 },
+    { freq: 1500, duration: 80, type: 'square', volume: 0.1 }
+  ],
+  // 浣熊：渐高鼻音，500→700Hz 锯齿
+  raccoon: [
+    { freq: 500, duration: 150, type: 'sawtooth', volume: 0.12, slideTo: 700 },
+    { freq: 650, duration: 180, type: 'sawtooth', volume: 0.1, slideTo: 550 }
+  ],
+  // 兔子：轻声叩击，1200→1000Hz 三角
+  rabbit: [
+    { freq: 1200, duration: 70, type: 'triangle', volume: 0.1, slideTo: 1000 },
+    { freq: 1000, duration: 70, type: 'triangle', volume: 0.1 }
+  ],
+  // 小猫：喵喵叫，600→900→500Hz 正弦
+  cat: [
+    { freq: 600, duration: 120, type: 'sine', volume: 0.13, slideTo: 900 },
+    { freq: 900, duration: 120, type: 'sine', volume: 0.12, slideTo: 500 },
+    { freq: 500, duration: 150, type: 'sine', volume: 0.11 }
+  ],
+  // 水獭：高音啾啾，1400→1200Hz 方波
+  otter: [
+    { freq: 1400, duration: 70, type: 'square', volume: 0.1, slideTo: 1200 },
+    { freq: 1300, duration: 80, type: 'square', volume: 0.1, slideTo: 1100 }
+  ],
+  // 獾：低吼鼻音，200→170Hz 锯齿
+  badger: [
+    { freq: 200, duration: 300, type: 'sawtooth', volume: 0.13, slideTo: 170, vibrato: 3, vibratoDepth: 5 },
+    { freq: 180, duration: 250, type: 'sawtooth', volume: 0.11 }
+  ],
+  // 河狸：尾巴拍水，短促低频，150→120Hz 方波
+  beaver: [
+    { freq: 150, duration: 120, type: 'square', volume: 0.12, slideTo: 120 },
+    { freq: 130, duration: 120, type: 'square', volume: 0.12 }
+  ],
+  // 刺猬：细碎吱吱，2000→1800Hz 方波
+  hedgehog: [
+    { freq: 2000, duration: 50, type: 'square', volume: 0.09, slideTo: 1800 },
+    { freq: 1800, duration: 50, type: 'square', volume: 0.09, slideTo: 1600 },
+    { freq: 2000, duration: 60, type: 'square', volume: 0.09 }
+  ],
+  // 臭鼬：短促嘶嘶，800→600Hz 锯齿
+  skunk: [
+    { freq: 800, duration: 100, type: 'sawtooth', volume: 0.11, slideTo: 600 },
+    { freq: 700, duration: 120, type: 'sawtooth', volume: 0.1, slideTo: 500 }
+  ],
+  // 螃蟹：清脆钳击，1800→2200Hz 方波
+  crab: [
+    { freq: 1800, duration: 50, type: 'square', volume: 0.1, slideTo: 2200 },
+    { freq: 2000, duration: 50, type: 'square', volume: 0.1, slideTo: 1600 }
+  ],
+  // 海马：轻快咕噜，900→700Hz 正弦
+  seahorse: [
+    { freq: 900, duration: 90, type: 'sine', volume: 0.1, slideTo: 700 },
+    { freq: 800, duration: 100, type: 'sine', volume: 0.1, slideTo: 600 }
+  ],
+  // 河马：低沉鼻音，120→100Hz 锯齿
+  hippo: [
+    { freq: 120, duration: 500, type: 'sawtooth', volume: 0.16, slideTo: 100, vibrato: 2, vibratoDepth: 4 },
+    { freq: 110, duration: 400, type: 'sawtooth', volume: 0.14 }
+  ],
+  // 犀牛：低沉吼鸣，90→70Hz 锯齿
+  rhino: [
+    { freq: 90, duration: 500, type: 'sawtooth', volume: 0.16, slideTo: 70, vibrato: 2, vibratoDepth: 4 },
+    { freq: 80, duration: 400, type: 'sawtooth', volume: 0.14 }
+  ],
+  // 海豹：发声嚎叫，400→600→300Hz 正弦
+  seal: [
+    { freq: 400, duration: 150, type: 'sine', volume: 0.13, slideTo: 600 },
+    { freq: 600, duration: 150, type: 'sine', volume: 0.12, slideTo: 300 },
+    { freq: 300, duration: 200, type: 'sine', volume: 0.11 }
+  ],
+  // 白鹅：响亮鹅叫，500→700→600Hz 方波
+  goose: [
+    { freq: 500, duration: 120, type: 'square', volume: 0.14, slideTo: 700 },
+    { freq: 700, duration: 120, type: 'square', volume: 0.14, slideTo: 600 },
+    { freq: 600, duration: 150, type: 'square', volume: 0.12 }
   ]
 }
 

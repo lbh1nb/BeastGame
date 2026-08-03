@@ -1,13 +1,29 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { GameEngine } from '@game/engine'
+import { GameEngine, makeDefaultConfig } from '@game/engine'
 import { getLevelById } from '@game/levels.config'
-import type { GameMode, GameState, LevelConfig } from '@game/types'
+import type { GameMode, GameState, LevelConfig, AnimalType, MechanicType } from '@game/types'
+import { preloadAnimalImages } from '@utils/animal-image'
+import { preloadMechanicImages } from '@utils/mechanic-image'
 import audioManager, {
   getComboTierCrossed,
   type ComboTier
 } from '@audio/manager'
 import { useUserStore } from './user'
+
+/** 机制动画状态（播放中的一次性动画） */
+export interface MechanicAnimState {
+  kind: 'resolving' | 'breaking' | 'revealing'
+  type?: MechanicType
+  startTime: number
+}
+
+/** 动画时长（ms） */
+const MECHANIC_ANIM_DURATION = {
+  resolving: 650,
+  breaking: 600,
+  revealing: 500
+} as const
 
 /**
  * 当前局游戏状态 Store
@@ -36,6 +52,20 @@ export const useGameStore = defineStore('game', () => {
     tier: 'good',
     combo: 0
   })
+
+  /** 最近被点击的牌 id 集合：点击后短暂停留在牌堆显示动态图，再入槽/消除 */
+  const pickedFlash = ref<Set<number>>(new Set())
+  const flashTimers = new Map<number, number>()
+  const FLASH_DURATION = 400
+  /** 暴露给视图的闪烁牌 id 数组 */
+  const pickedFlashIds = computed(() => Array.from(pickedFlash.value))
+
+  /**
+   * 正在播放机制动画的牌 id → 动画状态
+   * Tile 组件根据这个 map 判断是否播解除/破除/翻牌动画
+   */
+  const mechanicAnims = ref<Map<number, MechanicAnimState>>(new Map())
+  const mechanicAnimTimers = new Map<number, number>()
 
   /** 当前游戏模式 */
   const currentMode = computed<GameMode | null>(() => engineState.value?.mode ?? null)
@@ -70,6 +100,7 @@ export const useGameStore = defineStore('game', () => {
    * @param levelId 闯关模式关卡 ID
    */
   async function startGame(mode: GameMode, levelId?: number): Promise<void> {
+    clearPickedFlash()
     hasEnded.value = false
     finalScore.value = 0
     selectedLevelId.value = levelId ?? null
@@ -84,6 +115,21 @@ export const useGameStore = defineStore('game', () => {
           levelConfig = cfg
         }
       }
+
+      // 预加载本关用到的动物图片（static + active），避免进入游戏后牌面卡片空白、慢慢加载
+      const animals: AnimalType[] = levelConfig?.animals ?? makeDefaultConfig(mode).animals
+      try {
+        await preloadAnimalImages(animals)
+      } catch (e) {
+        console.warn('[game] 预加载动物图片失败（不影响游戏运行）', e)
+      }
+      // 预加载机制元素图（Seedream 生成的像素风素材）
+      try {
+        await preloadMechanicImages()
+      } catch (e) {
+        console.warn('[game] 预加载机制素材失败（不影响游戏运行）', e)
+      }
+
       engineState.value = GameEngine.init(mode, levelConfig)
     } catch (e) {
       console.error('[game] 初始化游戏失败', e)
@@ -118,6 +164,9 @@ export const useGameStore = defineStore('game', () => {
 
     // 非 pick 操作（如藤蔓/气泡解除、被挡住不可点击等）不继续处理音效/胜负
     if (!picked) return
+
+    // 点击成功：让该牌短暂停留在牌堆显示动态图，再入槽/消除
+    flashTile(tileId)
 
     const cur = engineState.value
     if (!cur) return
@@ -272,6 +321,8 @@ export const useGameStore = defineStore('game', () => {
 
   /** 退出：清空当前局状态 */
   function exitToHome(): void {
+    clearPickedFlash()
+    clearMechanicAnims()
     engineState.value = null
     selectedLevelId.value = null
     hasEnded.value = false
@@ -280,9 +331,76 @@ export const useGameStore = defineStore('game', () => {
 
   // ===== 内部方法 =====
 
+  /**
+   * 为某张牌触发一次性机制动画（resolving/breaking/revealing）
+   * 动画结束后自动从 mechanicAnims 中移除
+   */
+  function triggerMechanicAnim(
+    tileId: number,
+    kind: MechanicAnimState['kind'],
+    type?: MechanicType
+  ): void {
+    const existing = mechanicAnimTimers.get(tileId)
+    if (existing) window.clearTimeout(existing)
+    const state: MechanicAnimState = { kind, type, startTime: Date.now() }
+    const nextMap = new Map(mechanicAnims.value)
+    nextMap.set(tileId, state)
+    mechanicAnims.value = nextMap
+    const duration = MECHANIC_ANIM_DURATION[kind]
+    const timer = window.setTimeout(() => {
+      const m = new Map(mechanicAnims.value)
+      m.delete(tileId)
+      mechanicAnims.value = m
+      mechanicAnimTimers.delete(tileId)
+    }, duration)
+    mechanicAnimTimers.set(tileId, timer)
+  }
+
+  /** 清空所有机制动画（重开/退出时调用） */
+  function clearMechanicAnims(): void {
+    for (const t of mechanicAnimTimers.values()) window.clearTimeout(t)
+    mechanicAnimTimers.clear()
+    mechanicAnims.value = new Map()
+  }
+
+  /** 让某张牌短暂停留在牌堆并显示动态图，随后入槽/消除 */
+  function flashTile(tileId: number): void {
+    const set = new Set(pickedFlash.value)
+    set.add(tileId)
+    pickedFlash.value = set
+    const existing = flashTimers.get(tileId)
+    if (existing) window.clearTimeout(existing)
+    const timer = window.setTimeout(() => {
+      const ns = new Set(pickedFlash.value)
+      ns.delete(tileId)
+      pickedFlash.value = ns
+      flashTimers.delete(tileId)
+    }, FLASH_DURATION)
+    flashTimers.set(tileId, timer)
+  }
+
+  /** 清空点击闪烁（重开/退出时调用，避免残留定时器） */
+  function clearPickedFlash(): void {
+    for (const t of flashTimers.values()) window.clearTimeout(t)
+    flashTimers.clear()
+    pickedFlash.value = new Set()
+  }
+
   /** 应用引擎返回的状态，兼容不可变/可变两种实现 */
   function applyState(next: GameState | void | undefined): void {
     if (next) {
+      // 扫描机制事件，触发对应一次性动画
+      if (next.lastMechanicEvents && next.lastMechanicEvents.length > 0) {
+        for (const ev of next.lastMechanicEvents) {
+          if (ev.kind === 'resolved') {
+            triggerMechanicAnim(ev.tileId, 'resolving', ev.type)
+          } else if (ev.kind === 'broken') {
+            triggerMechanicAnim(ev.tileId, 'breaking', ev.type)
+          } else if (ev.kind === 'revealed') {
+            triggerMechanicAnim(ev.tileId, 'revealing')
+          }
+        }
+      }
       engineState.value = next
     } else if (engineState.value) {
       engineState.value = { ...engineState.value }
@@ -392,6 +510,8 @@ export const useGameStore = defineStore('game', () => {
     finalScore,
     hasEnded,
     comboPraise,
+    pickedFlashIds,
+    mechanicAnims,
     currentMode,
     isPlaying,
     isWon,

@@ -86,12 +86,12 @@ const activeChapter = ref(1)
 
 /** 章节兜底配置（与 levels.config 保持一致） */
 const FALLBACK_CHAPTERS: Chapter[] = [
-  { id: 1, name: '家畜', animals: ['sheep', 'pig', 'chicken', 'dog'], theme: '#FFF8DC' },
-  { id: 2, name: '野生', animals: ['tiger', 'lion', 'bear', 'fox'], theme: '#FFE8CC' },
-  { id: 3, name: '森林', animals: ['frog', 'crocodile', 'elephant', 'panda'], theme: '#E6F5E6' },
-  { id: 4, name: '鸟类', animals: ['flamingo', 'peacock', 'penguin', 'parrot'], theme: '#FFE4E1' },
-  { id: 5, name: '海洋', animals: ['fish', 'whale', 'octopus', 'jellyfish'], theme: '#E0F0FF' },
-  { id: 6, name: '综合', animals: ['tiger', 'fox', 'fish', 'peacock'], theme: '#ECE0FF' }
+  { id: 1, name: '家畜', animals: ['sheep', 'pig', 'chicken', 'cow', 'horse', 'goat', 'duck', 'rooster'], theme: '#FFF8DC' },
+  { id: 2, name: '野兽', animals: ['tiger', 'lion', 'bear', 'wolf', 'fox', 'zebra', 'camel', 'giraffe'], theme: '#FFE8CC' },
+  { id: 3, name: '森林', animals: ['monkey', 'panda', 'deer', 'moose', 'kangaroo', 'koala', 'squirrel', 'raccoon'], theme: '#E6F5E6' },
+  { id: 4, name: '小动物', animals: ['rabbit', 'cat', 'dog', 'otter', 'badger', 'beaver', 'hedgehog', 'skunk'], theme: '#FFE4E1' },
+  { id: 5, name: '海洋', animals: ['fish', 'whale', 'dolphin', 'octopus', 'jellyfish', 'turtle', 'crab', 'seahorse'], theme: '#E0F0FF' },
+  { id: 6, name: '综合', animals: ['hippo', 'rhino', 'elephant', 'frog', 'seal', 'owl', 'goose', 'penguin'], theme: '#ECE0FF' }
 ]
 
 const chapters = computed<Chapter[]>(() => {

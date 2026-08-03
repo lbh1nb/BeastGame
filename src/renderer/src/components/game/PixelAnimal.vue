@@ -9,20 +9,19 @@
 
 <script setup lang="ts">
 /**
- * 像素动物 Canvas 组件（32×32 版）
- * - 根据 animal / hover 状态绘制 Q 萌像素动物
- * - hover 时切换到动画帧（弹跳+眨眼）
- * - 父组件通过 hover prop 控制悬停状态
- * - v4：去掉 variant 变体，每种动物唯一模型
+ * 动物图片组件（图片素材版）
+ * - 从 resources/animals/static 加载静态图，active 加载悬停动态图
+ * - 自动抠透明背景 + 裁剪主体 + 等比缩放居中
+ * - 父组件通过 hover prop 控制是否显示悬停动态图
  */
 import { ref, watch, onMounted, computed } from 'vue'
-import { drawAnimal, PIXEL_SIZE } from '@utils/pixel-animal'
+import { getAnimalImage } from '@utils/animal-image'
 import type { AnimalType } from '@game/types'
 
 interface Props {
   animal: AnimalType
   hover?: boolean
-  /** 渲染尺寸（px），动物会居中绘制 */
+  /** 渲染尺寸（px），动物会等比缩放居中 */
   size?: number
 }
 
@@ -36,33 +35,34 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 /** Canvas 实际尺寸 = size */
 const canvasSize = computed(() => props.size)
 
-/** 缩放倍数：size / 32 */
-const scale = computed(() => Math.floor(props.size / PIXEL_SIZE))
-
-/** 居中偏移 */
-const offset = computed(() => {
-  const drawn = scale.value * PIXEL_SIZE
-  return Math.floor((props.size - drawn) / 2)
-})
-
-/** 绘制 */
-function render(): void {
+/** 渲染图片到 canvas */
+async function render(): Promise<void> {
   const canvas = canvasRef.value
   if (!canvas) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.imageSmoothingEnabled = false
 
-  drawAnimal(
-    ctx,
-    props.animal,
-    props.hover ? 'hover' : 'idle',
-    scale.value,
-    offset.value,
-    offset.value
-  )
+  const img = await getAnimalImage(props.animal, props.hover)
+  if (!img) return
+
+  // 等比缩放居中，填满卡片
+  // 先按 contain 计算（完整显示），再放大填充：
+  //  - 宽高比接近的动物：放大到填满卡片，主体更饱满
+  //  - 长条形动物：放大到一边填满，但限制不超过 contain 的 1.5 倍，避免过度裁切关键特征
+  const cw = img.width
+  const ch = img.height
+  const containScale = Math.min(canvas.width / cw, canvas.height / ch)
+  const fillScale = Math.max(canvas.width / cw, canvas.height / ch)
+  const scale = Math.min(fillScale, containScale * 1.5)
+  const dw = cw * scale
+  const dh = ch * scale
+  const dx = (canvas.width - dw) / 2
+  const dy = (canvas.height - dh) / 2
+
+  ctx.imageSmoothingEnabled = true
+  ctx.drawImage(img, dx, dy, dw, dh)
 }
 
 onMounted(() => {
@@ -79,9 +79,6 @@ watch(
 <style scoped>
 .pixel-animal {
   display: block;
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
   pointer-events: none;
 }
 </style>
