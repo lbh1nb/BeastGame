@@ -386,7 +386,7 @@ function buildMarkers(): void {
 /** 加载真实卡通贴图并替换 */
 async function loadEarthTexture(): Promise<void> {
   try {
-    const path = await window.gameAPI.asset.resolve('earth_texture_cartoon_v8.jpg')
+    const path = await window.gameAPI.asset.resolve('earth_texture_cartoon_v9.jpg')
     const img = new Image()
     img.onload = () => {
       if (disposed || !earthMesh) return

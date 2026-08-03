@@ -18,15 +18,15 @@ export interface Chapter {
 }
 
 /**
- * 6 章配置（v9：每章8种动物，图片素材版）
+ * 6 章配置（v10：4 章扩充至 10 种动物，共 56 种）
  */
 export const CHAPTERS: Chapter[] = [
   { id: 1, name: '家畜', animals: ['sheep', 'pig', 'chicken', 'cow', 'horse', 'goat', 'duck', 'rooster'], theme: '#FFF8DC' },
-  { id: 2, name: '野兽', animals: ['tiger', 'lion', 'bear', 'wolf', 'fox', 'zebra', 'camel', 'giraffe'], theme: '#FFE8CC' },
-  { id: 3, name: '森林', animals: ['monkey', 'panda', 'deer', 'moose', 'kangaroo', 'koala', 'squirrel', 'raccoon'], theme: '#E6F5E6' },
+  { id: 2, name: '野兽', animals: ['tiger', 'lion', 'bear', 'wolf', 'fox', 'zebra', 'camel', 'giraffe', 'boar', 'cheetah'], theme: '#FFE8CC' },
+  { id: 3, name: '森林', animals: ['monkey', 'panda', 'deer', 'moose', 'kangaroo', 'koala', 'squirrel', 'raccoon', 'meerkat', 'hare'], theme: '#E6F5E6' },
   { id: 4, name: '小动物', animals: ['rabbit', 'cat', 'dog', 'otter', 'badger', 'beaver', 'hedgehog', 'skunk'], theme: '#FFE4E1' },
-  { id: 5, name: '海洋', animals: ['fish', 'whale', 'dolphin', 'octopus', 'jellyfish', 'turtle', 'crab', 'seahorse'], theme: '#E0F0FF' },
-  { id: 6, name: '综合', animals: ['hippo', 'rhino', 'elephant', 'frog', 'seal', 'owl', 'goose', 'penguin'], theme: '#ECE0FF' }
+  { id: 5, name: '海洋', animals: ['fish', 'whale', 'dolphin', 'octopus', 'jellyfish', 'turtle', 'crab', 'seahorse', 'shark', 'crocodile'], theme: '#E0F0FF' },
+  { id: 6, name: '综合', animals: ['hippo', 'rhino', 'elephant', 'frog', 'seal', 'owl', 'goose', 'penguin', 'flamingo', 'ostrich'], theme: '#ECE0FF' }
 ]
 
 /** Boss 关时间限制（秒） */

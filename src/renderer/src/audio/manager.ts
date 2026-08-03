@@ -83,7 +83,7 @@ const TIER_SFX_MAP: Record<ComboTier, SfxName> = {
   godlike: 'combo_godlike'
 }
 
-/** 动物叫声文件名映射（48种动物，素材缺失时回退到合成音效） */
+/** 动物叫声文件名映射（56种动物，素材缺失时回退到合成音效） */
 const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   // 第1章 家畜
   sheep: 'animal_sheep.mp3',
@@ -103,6 +103,8 @@ const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   zebra: 'animal_zebra.mp3',
   camel: 'animal_camel.mp3',
   giraffe: 'animal_giraffe.mp3',
+  boar: 'animal_boar.mp3',
+  cheetah: 'animal_cheetah.mp3',
   // 第3章 森林
   monkey: 'animal_monkey.mp3',
   panda: 'animal_panda.mp3',
@@ -112,6 +114,8 @@ const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   koala: 'animal_koala.mp3',
   squirrel: 'animal_squirrel.mp3',
   raccoon: 'animal_raccoon.mp3',
+  meerkat: 'animal_meerkat.mp3',
+  hare: 'animal_hare.mp3',
   // 第4章 小动物
   rabbit: 'animal_rabbit.mp3',
   cat: 'animal_cat.mp3',
@@ -130,6 +134,8 @@ const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   turtle: 'animal_turtle.mp3',
   crab: 'animal_crab.mp3',
   seahorse: 'animal_seahorse.mp3',
+  shark: 'animal_shark.mp3',
+  crocodile: 'animal_crocodile.mp3',
   // 第6章 综合
   hippo: 'animal_hippo.mp3',
   rhino: 'animal_rhino.mp3',
@@ -138,7 +144,9 @@ const ANIMAL_SFX_MAP: Record<AnimalType, string> = {
   seal: 'animal_seal.mp3',
   owl: 'animal_owl.mp3',
   goose: 'animal_goose.mp3',
-  penguin: 'animal_penguin.mp3'
+  penguin: 'animal_penguin.mp3',
+  flamingo: 'animal_flamingo.mp3',
+  ostrich: 'animal_ostrich.mp3'
 }
 
 /** 支持的 BGM 名（可扩展） */

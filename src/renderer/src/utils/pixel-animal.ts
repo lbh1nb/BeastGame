@@ -3,7 +3,7 @@
  * 动物贴图已改为加载 resources/animals 下的图片素材（见 utils/animal-image.ts），
  * 本文件仅保留非贴图相关的辅助函数：
  * - getAnimalBgColor       牌面背景色
- * - ANIMAL_NAMES           动物中文名映射（48 种）
+ * - ANIMAL_NAMES           动物中文名映射（56 种）
  * - drawMechanicOverlay    章节机制遮罩绘制
  * - drawMechanicResolved   机制解除效果绘制
  */
@@ -14,7 +14,7 @@ export function getAnimalBgColor(_animal: AnimalType): string {
   return '#f8f5ee'
 }
 
-/** 动物中文名映射（48 种） */
+/** 动物中文名映射（56 种） */
 export const ANIMAL_NAMES: Record<AnimalType, string> = {
   // 第1章 家畜
   sheep: '绵羊', pig: '小猪', chicken: '小鸡', cow: '奶牛',
@@ -22,18 +22,22 @@ export const ANIMAL_NAMES: Record<AnimalType, string> = {
   // 第2章 野兽
   tiger: '老虎', lion: '狮子', bear: '棕熊', wolf: '灰狼',
   fox: '狐狸', zebra: '斑马', camel: '骆驼', giraffe: '长颈鹿',
+  boar: '野猪', cheetah: '猎豹',
   // 第3章 森林
   monkey: '猴子', panda: '熊猫', deer: '小鹿', moose: '驼鹿',
   kangaroo: '袋鼠', koala: '考拉', squirrel: '松鼠', raccoon: '浣熊',
+  meerkat: '猫鼬', hare: '野兔',
   // 第4章 小动物
   rabbit: '兔子', cat: '小猫', dog: '小狗', otter: '水獭',
   badger: '獾', beaver: '河狸', hedgehog: '刺猬', skunk: '臭鼬',
   // 第5章 海洋
   fish: '小鱼', whale: '鲸鱼', dolphin: '海豚', octopus: '章鱼',
   jellyfish: '水母', turtle: '海龟', crab: '螃蟹', seahorse: '海马',
+  shark: '鲨鱼', crocodile: '鳄鱼',
   // 第6章 综合
   hippo: '河马', rhino: '犀牛', elephant: '大象', frog: '青蛙',
-  seal: '海豹', owl: '猫头鹰', goose: '白鹅', penguin: '企鹅'
+  seal: '海豹', owl: '猫头鹰', goose: '白鹅', penguin: '企鹅',
+  flamingo: '火烈鸟', ostrich: '鸵鸟'
 }
 
 /** 绘制机制遮罩 */

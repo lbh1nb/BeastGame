@@ -4,7 +4,7 @@
  */
 
 /**
- * 48 种动物类型（v9：图片素材版）
+ * 56 种动物类型（v10：图片素材版 + 8 种新动物）
  * 使用 shoulege-shou-animals-assets 素材库中的图片（static 静态 / active 悬停动态）
  * 按章节分组，每章 8 种：
  *  第1章 家畜：sheep / pig / chicken / cow / horse / goat / duck / rooster
@@ -19,14 +19,18 @@ export type AnimalType =
   | 'sheep' | 'pig' | 'chicken' | 'cow' | 'horse' | 'goat' | 'duck' | 'rooster'
   // 第2章 野兽
   | 'tiger' | 'lion' | 'bear' | 'wolf' | 'fox' | 'zebra' | 'camel' | 'giraffe'
+  | 'boar' | 'cheetah'
   // 第3章 森林
   | 'monkey' | 'panda' | 'deer' | 'moose' | 'kangaroo' | 'koala' | 'squirrel' | 'raccoon'
+  | 'meerkat' | 'hare'
   // 第4章 小动物
   | 'rabbit' | 'cat' | 'dog' | 'otter' | 'badger' | 'beaver' | 'hedgehog' | 'skunk'
   // 第5章 海洋
   | 'fish' | 'whale' | 'dolphin' | 'octopus' | 'jellyfish' | 'turtle' | 'crab' | 'seahorse'
+  | 'shark' | 'crocodile'
   // 第6章 综合
   | 'hippo' | 'rhino' | 'elephant' | 'frog' | 'seal' | 'owl' | 'goose' | 'penguin'
+  | 'flamingo' | 'ostrich'
 
 /** 游戏模式：3消 / 4消 / 闯关 */
 export type GameMode = 'classic3' | 'classic4' | 'level'

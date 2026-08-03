@@ -31,9 +31,9 @@
 ## 三、当前进度（重要）
 
 ### 3.1 已完成的核心功能
-- 48 种动物模型（6 章 × 8 种：家畜/野兽/森林/小动物/海洋/综合），图片素材在 `resources/animals/static/` 和 `active/`
+- 56 种动物模型（6 章：家畜8/野兽10/森林10/小动物8/海洋10/综合10），图片素材在 `resources/animals/static/` 和 `active/`
 - 三消/四消游戏逻辑 + 道具（提示/洗牌/撤销）
-- 闯关模式：地球 360° 选关（Three.js 卡通地球 `earth_texture_cartoon_v8.jpg`）
+- 闯关模式：地球 360° 选关（Three.js 卡通地球 `earth_texture_cartoon_v9.jpg`）
 - 5 种章节机制：闹脾气(moody)/藤蔓(vine)/贪睡(sleepy)/躲猫猫(hidden)/气泡(bubble)
 - 连击系统 + BGM + 音效（统一用 toneGenerator）
 
@@ -116,7 +116,7 @@ npm run build:win    # 构建 + 打包 Windows 可执行（release/win-unpacked/
 - 动物素材来自 `shoulege-shou-animals-assets/`（static 牌面 + active 悬停），已复制到 `resources/animals/`。
 - 新增动物素材：放入 `resources/animals/static/{animal}.jpg` 和 `active/{animal}_active.jpg` 即可自动加载。
 - 机制素材：放入 `resources/mechanics/`。
-- 地球贴图：`resources/earth_texture_cartoon_v8.jpg`（2:1 等距圆柱 Q 萌卡通）。
+- 地球贴图：`resources/earth_texture_cartoon_v9.jpg`（2:1 等距圆柱 Q 萌卡通）。
 
 ---
 

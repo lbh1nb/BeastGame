@@ -673,6 +673,47 @@ const ANIMAL_SOUND_SEQUENCES: Record<AnimalType, NoteSequence> = {
     { freq: 500, duration: 120, type: 'square', volume: 0.14, slideTo: 700 },
     { freq: 700, duration: 120, type: 'square', volume: 0.14, slideTo: 600 },
     { freq: 600, duration: 150, type: 'square', volume: 0.12 }
+  ],
+  // 野猪：低沉哼哼，200→150Hz 锯齿波，粗糙
+  boar: [
+    { freq: 200, duration: 150, type: 'sawtooth', volume: 0.18, slideTo: 150 },
+    { freq: 150, duration: 200, type: 'sawtooth', volume: 0.16, vibrato: 5, vibratoDepth: 6 }
+  ],
+  // 猎豹：高频鸟鸣式啾啾（猎豹叫声像鸟），1200→1500Hz 方波快闪
+  cheetah: [
+    { freq: 1200, duration: 60, type: 'square', volume: 0.12, slideTo: 1500 },
+    { freq: 1500, duration: 60, type: 'square', volume: 0.12, slideTo: 1200 },
+    { freq: 1300, duration: 80, type: 'square', volume: 0.11, slideTo: 1600 }
+  ],
+  // 猫鼬：急促高频吱吱叫，1600→1800Hz 方波连串
+  meerkat: [
+    { freq: 1600, duration: 40, type: 'square', volume: 0.10 },
+    { freq: 1800, duration: 40, type: 'square', volume: 0.10 },
+    { freq: 1600, duration: 40, type: 'square', volume: 0.10 },
+    { freq: 1700, duration: 60, type: 'square', volume: 0.09 }
+  ],
+  // 野兔：低频闷响蹬脚，80→60Hz 正弦波短促
+  hare: [
+    { freq: 80, duration: 80, type: 'sine', volume: 0.12, slideTo: 60 },
+    { freq: 60, duration: 100, type: 'sine', volume: 0.10 }
+  ],
+  // 鲨鱼：极低频隆隆，60→40Hz 正弦波，沉闷
+  shark: [
+    { freq: 60, duration: 400, type: 'sine', volume: 0.10, slideTo: 40, vibrato: 3, vibratoDepth: 4 }
+  ],
+  // 鳄鱼：低频嘶吼，100→80Hz 锯齿波 + 颤音
+  crocodile: [
+    { freq: 100, duration: 300, type: 'sawtooth', volume: 0.16, slideTo: 80, vibrato: 4, vibratoDepth: 5 }
+  ],
+  // 火烈鸟：高亢雁鸣式，600→800Hz 方波
+  flamingo: [
+    { freq: 600, duration: 100, type: 'square', volume: 0.13, slideTo: 800 },
+    { freq: 800, duration: 120, type: 'square', volume: 0.12, slideTo: 700 },
+    { freq: 700, duration: 100, type: 'square', volume: 0.11 }
+  ],
+  // 鸵鸟：低沉轰鸣，70→50Hz 锯齿波（鸵鸟叫声是低频boom）
+  ostrich: [
+    { freq: 70, duration: 500, type: 'sawtooth', volume: 0.18, slideTo: 50, vibrato: 2, vibratoDepth: 3 }
   ]
 }
 
