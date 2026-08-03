@@ -25,6 +25,9 @@ export type MechanicAssetName =
 /** 抠图容差 */
 const BG_TOLERANCE = 45
 
+/** 抠图处理前先缩到的最大边长（px），大幅降低逐像素扫描开销 */
+const MAX_PROCESS_SIZE = 128
+
 /** 缓存 key = 文件名 */
 const cache = new Map<MechanicAssetName, HTMLCanvasElement | null>()
 
@@ -41,18 +44,44 @@ export async function getMechanicImage(name: MechanicAssetName): Promise<HTMLCan
     const basePath = await window.gameAPI.asset.resolve('mechanics')
     const url = 'file:///' + `${basePath}/${name}.jpg`.replace(/\\/g, '/')
 
-    const img = new Image()
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve()
-      img.onerror = () => reject(new Error('load fail: ' + name))
-      img.src = url
-    })
+    // 用 createImageBitmap + resize 解码直接缩小，避免解码全尺寸（1920x1920）大图
+    let img: ImageBitmap | HTMLImageElement
+    let pw: number
+    let ph: number
+    try {
+      const resp = await fetch(url)
+      const blob = await resp.blob()
+      const tmp = await createImageBitmap(blob)
+      const scale = Math.min(1, MAX_PROCESS_SIZE / Math.max(tmp.width, tmp.height))
+      pw = Math.max(1, Math.round(tmp.width * scale))
+      ph = Math.max(1, Math.round(tmp.height * scale))
+      img = await createImageBitmap(blob, {
+        resizeWidth: pw,
+        resizeHeight: ph,
+        resizeQuality: 'high'
+      })
+      tmp.close()
+    } catch {
+      // 回退：普通 Image 加载后绘制到小 canvas
+      const el = new Image()
+      await new Promise<void>((resolve, reject) => {
+        el.onload = () => resolve()
+        el.onerror = () => reject(new Error('load fail: ' + name))
+        el.src = url
+      })
+      const scale = Math.min(1, MAX_PROCESS_SIZE / Math.max(el.width, el.height))
+      pw = Math.max(1, Math.round(el.width * scale))
+      ph = Math.max(1, Math.round(el.height * scale))
+      img = el
+    }
 
     const off = document.createElement('canvas')
-    off.width = img.width
-    off.height = img.height
+    off.width = pw
+    off.height = ph
     const octx = off.getContext('2d')!
-    octx.drawImage(img, 0, 0)
+    octx.imageSmoothingEnabled = true
+    octx.drawImage(img as CanvasImageSource, 0, 0, pw, ph)
+    if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) img.close()
 
     const idd = octx.getImageData(0, 0, off.width, off.height)
     const d = idd.data

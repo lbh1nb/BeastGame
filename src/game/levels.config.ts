@@ -74,9 +74,9 @@ const CHAPTER_MECHANICS: Record<number, {
     introAnimal: 'sheep',
     introTitle: '小动物闹脾气啦！',
     introBody: '有些小动物耍别扭了（😠乌云遮罩），点击无效。消除任意一组后它们就会变开心（😊），然后才能点哦~',
-    l3: { type: 'moody', ratio: 0.30 },
-    l4: { type: 'moody', ratio: 0.40 },
-    l5: { type: 'moody', ratio: 0.40 }
+    l3: { type: 'moody', ratio: 0.18 },
+    l4: { type: 'moody', ratio: 0.22 },
+    l5: { type: 'moody', ratio: 0.22 }
   },
   2: {
     introAnimal: 'fox',
@@ -90,9 +90,9 @@ const CHAPTER_MECHANICS: Record<number, {
     introAnimal: 'panda',
     introTitle: '小动物在睡觉呢~',
     introBody: '部分动物睡得正香（💤气泡+闭眼），消除一次后会被唤醒，然后才能点击入槽哦~',
-    l3: { type: 'sleepy', ratio: 0.30 },
-    l4: { type: 'sleepy', ratio: 0.40 },
-    l5: { type: 'sleepy', ratio: 0.40 }
+    l3: { type: 'sleepy', ratio: 0.18 },
+    l4: { type: 'sleepy', ratio: 0.22 },
+    l5: { type: 'sleepy', ratio: 0.22 }
   },
   4: {
     introAnimal: 'owl',
@@ -122,9 +122,9 @@ const CHAPTER_MECHANICS: Record<number, {
 
 /** 第6章随机机制池 */
 const CHAOS_POOL: NonNullable<LevelConfig['mechanic']>[] = [
-  { type: 'moody', ratio: 0.20 },
+  { type: 'moody', ratio: 0.15 },
   { type: 'vine', ratio: 0.20, clickLimit: 95, clickRefund: 3 },
-  { type: 'sleepy', ratio: 0.20 },
+  { type: 'sleepy', ratio: 0.15 },
   { type: 'hidden', ratio: 0.20 },
   { type: 'bubble', ratio: 0.20, clickLimit: 95, clickRefund: 3 }
 ]
@@ -165,11 +165,11 @@ function buildLevelsFromSeed(seed: LevelSeed): LevelConfig[] {
         mechanic = mecCfg.l5 ?? undefined
       }
     }
-    // 第6章 普通关：L3=1种(20%), L4=2种(各15%)
+    // 第6章 普通关：L3=1种(15%), L4=2种(各18%)
     if (seed.chapter === 6 && i >= 2 && i < 4) {
       mechanic = i === 2
-        ? { ...CHAOS_POOL[0], ratio: 0.20 }
-        : { ...CHAOS_POOL[0], ratio: 0.25 }
+        ? { ...CHAOS_POOL[0], ratio: 0.15 }
+        : { ...CHAOS_POOL[0], ratio: 0.18 }
     }
 
     levels.push({

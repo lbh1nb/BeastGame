@@ -1,6 +1,6 @@
 # 🐑 兽了个兽
 
-> Q萌卡通风格的消除类桌面小游戏 · Electron + Vue 3 + TypeScript + SQLite · v1.2.0
+> Q萌卡通风格的消除类桌面小游戏 · Electron + Vue 3 + TypeScript + SQLite · v1.3.0
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### 玩家使用（解压即玩）
 
-**下载地址**：[GitHub Release v1.2.0](https://github.com/lbh1nb/BeastGame/releases/tag/v1.2.0)
+**下载地址**：[GitHub Release v1.3.0](https://github.com/lbh1nb/BeastGame/releases/tag/v1.3.0)
 
 1. 点击上方链接，下载 `BeastGame-portable.zip`（约 120MB）
 2. 解压到任意目录

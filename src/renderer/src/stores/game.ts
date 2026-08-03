@@ -116,21 +116,19 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 预加载本关用到的动物图片（static + active），避免进入游戏后牌面卡片空白、慢慢加载
-      const animals: AnimalType[] = levelConfig?.animals ?? makeDefaultConfig(mode).animals
-      try {
-        await preloadAnimalImages(animals)
-      } catch (e) {
-        console.warn('[game] 预加载动物图片失败（不影响游戏运行）', e)
-      }
-      // 预加载机制元素图（Seedream 生成的像素风素材）
-      try {
-        await preloadMechanicImages()
-      } catch (e) {
-        console.warn('[game] 预加载机制素材失败（不影响游戏运行）', e)
-      }
-
+      // 立即初始化引擎，让"加载中"界面尽快关闭（布局/绘图计算不依赖图片）
       engineState.value = GameEngine.init(mode, levelConfig)
+
+      // 后台预加载本关用到的动物与机制图片（不阻塞游戏启动，带超时兜底）
+      const animals: AnimalType[] = levelConfig?.animals ?? makeDefaultConfig(mode).animals
+      const withTimeout = (p: Promise<unknown>, ms: number): Promise<void> =>
+        Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]).then(() => undefined)
+      withTimeout(
+        Promise.all([preloadAnimalImages(animals), preloadMechanicImages()]),
+        1500
+      ).catch((e) => {
+        console.warn('[game] 预加载图片失败（不影响游戏运行）', e)
+      })
     } catch (e) {
       console.error('[game] 初始化游戏失败', e)
       engineState.value = null

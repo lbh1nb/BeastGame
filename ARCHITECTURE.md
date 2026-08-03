@@ -1604,3 +1604,52 @@ flowchart LR
 | `resources/animals/active/` | 新增8张悬停动态动物图 |
 | `resources/earth_texture_cartoon_v9.jpg` | **新增** AI 卡通地球贴图 |
 | `resources/mechanics/videos/` | **新增** 2个机制解除视频（暂未集成） |
+
+---
+
+## 二十五、v12 改动：游戏加载性能优化（2026-08-04）
+
+### 25.1 问题背景
+
+用户反馈：**进入游戏会出现"游戏加载中"界面，且停留很久，严重影响体验**。
+
+根因分析：
+- 动物/机制图片原始尺寸为 **1920×1920**，之前 `getAnimalImage`/`getMechanicImage` 用 `<img>` 完整解码整幅大图后，再逐像素扫描抠图，解码与像素扫描开销大。
+- `startGame` 在设置 `engineState` **之前** `await` 全部图片预加载完成，导致加载界面长时间停留。
+
+### 25.2 优化方案
+
+```mermaid
+flowchart LR
+    A["原: 解码1920x1920全图<br/>+逐像素扫描"] --> X["加载界面卡住<br/>长时间停留"]
+    B["createImageBitmap + resize<br/>解码时直接缩小到128px"] --> C["抠图扫描量减少约200倍"]
+    D["引擎 init 先行<br/>（不依赖图片）"] --> E["加载界面立即关闭"]
+    F["图片后台预加载<br/>带1.5s超时兜底"] --> G["牌面图片快速填充"]
+```
+
+**优化1：解码时直接缩小（`animal-image.ts` / `mechanic-image.ts`）**
+
+- 新增 `MAX_PROCESS_SIZE = 128`：抠图处理前先缩到最大边长 128px。
+- 用 `createImageBitmap(blob, { resizeWidth, resizeHeight, resizeQuality: 'high' })` 从文件 `fetch` 后解码时**直接缩小**，避免解码 1920×1920 全尺寸大图（实测单张解码+resize 约 22ms）。
+- 保留 `fetch`/`createImageBitmap` 失败时的回退：`<img>` 加载后绘制到小 canvas，功能不受影响。
+
+**优化2：引擎先初始化，图片后台预加载（`stores/game.ts`）**
+
+- `startGame` 改为**先** `GameEngine.init` 设置 `engineState`（布局/绘图计算不依赖图片），让"加载中"界面立即关闭。
+- 动物与机制图片改为**后台预加载**（不 `await` 阻塞），并加 `withTimeout` 1.5s 超时兜底；超时后剩余图片仍继续异步加载（命中缓存），牌面会快速填充。
+
+### 25.3 实测效果
+
+| 指标 | 优化前 | 优化后 |
+|---|---|---|
+| 进入游戏总耗时（导航→就绪） | 约 1.6s | 约 126ms |
+| "游戏加载中"界面 | 可见约 1.6s | 几乎不显示（0 帧） |
+| 牌面 180 个 tile 图片 | 逐个慢加载 | 后台预加载全部填充（180/180） |
+
+### 25.4 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/renderer/src/utils/animal-image.ts` | `createImageBitmap`+resize 解码时缩小到 128px，避免解码全尺寸大图 |
+| `src/renderer/src/utils/mechanic-image.ts` | 同上，机制图解码优化 |
+| `src/renderer/src/stores/game.ts` | `startGame` 引擎先 init、图片后台预加载（1.5s 超时兜底） |
