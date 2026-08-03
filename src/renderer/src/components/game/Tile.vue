@@ -136,8 +136,8 @@ const mechanicStuck = computed(() => (props.tile.mechanicState?.stuck ?? 0) > 0)
 const isHiddenStuck = computed(() => mechanicType.value === 'hidden' && mechanicStuck.value)
 
 /** 主元素图（懒加载） */
-const mainImg = ref<string | null>(null)
-const burstImg = ref<string | null>(null)
+const mainImg = ref<string | undefined>(undefined)
+const burstImg = ref<string | undefined>(undefined)
 const assetMap: Record<MechanicType, MechanicAssetName> = {
   moody: 'moody_cloud',
   vine: 'vine',
@@ -155,8 +155,8 @@ const burstAssetMap: Record<MechanicType, MechanicAssetName> = {
 
 async function loadMainImg() {
   if (!mechanicType.value || !mechanicStuck.value) {
-    mainImg.value = null
-    burstImg.value = null
+    mainImg.value = undefined
+    burstImg.value = undefined
     return
   }
   const url = await getMechanicImageUrl(assetMap[mechanicType.value])

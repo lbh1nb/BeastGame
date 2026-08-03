@@ -1,5 +1,5 @@
 /**
- * 生成 48 种动物的 HTML 预览页面（图片素材版）
+ * 生成 56 种动物的 HTML 预览页面（图片素材版）
  * 读取 resources/animals/static 下的图片，转 base64 内嵌，
  * 输出独立的 HTML 文件供 PureShowWidget 展示。
  */
@@ -13,18 +13,22 @@ const ANIMAL_LIST: Array<[string, string]> = [
   // 第2章 野兽
   ['tiger', '老虎'], ['lion', '狮子'], ['bear', '棕熊'], ['wolf', '灰狼'],
   ['fox', '狐狸'], ['zebra', '斑马'], ['camel', '骆驼'], ['giraffe', '长颈鹿'],
+  ['boar', '野猪'], ['cheetah', '猎豹'],
   // 第3章 森林
   ['monkey', '猴子'], ['panda', '熊猫'], ['deer', '小鹿'], ['moose', '驼鹿'],
   ['kangaroo', '袋鼠'], ['koala', '考拉'], ['squirrel', '松鼠'], ['raccoon', '浣熊'],
+  ['meerkat', '猫鼬'], ['hare', '野兔'],
   // 第4章 小动物
   ['rabbit', '兔子'], ['cat', '小猫'], ['dog', '小狗'], ['otter', '水獭'],
   ['badger', '獾'], ['beaver', '河狸'], ['hedgehog', '刺猬'], ['skunk', '臭鼬'],
   // 第5章 海洋
   ['fish', '小鱼'], ['whale', '鲸鱼'], ['dolphin', '海豚'], ['octopus', '章鱼'],
   ['jellyfish', '水母'], ['turtle', '海龟'], ['crab', '螃蟹'], ['seahorse', '海马'],
+  ['shark', '鲨鱼'], ['crocodile', '鳄鱼'],
   // 第6章 综合
   ['hippo', '河马'], ['rhino', '犀牛'], ['elephant', '大象'], ['frog', '青蛙'],
-  ['seal', '海豹'], ['owl', '猫头鹰'], ['goose', '白鹅'], ['penguin', '企鹅']
+  ['seal', '海豹'], ['owl', '猫头鹰'], ['goose', '白鹅'], ['penguin', '企鹅'],
+  ['flamingo', '火烈鸟'], ['ostrich', '鸵鸟']
 ]
 
 const staticDir = path.resolve(__dirname, '..', 'resources', 'animals', 'static')

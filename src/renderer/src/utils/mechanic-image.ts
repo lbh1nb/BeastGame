@@ -111,11 +111,11 @@ export async function preloadMechanicImages(): Promise<void> {
 }
 
 /** 把 canvas 转成 dataURL，方便 <img :src> 使用（带缓存） */
-const urlCache = new Map<MechanicAssetName, string | null>()
-export async function getMechanicImageUrl(name: MechanicAssetName): Promise<string | null> {
-  if (urlCache.has(name)) return urlCache.get(name)!
+const urlCache = new Map<MechanicAssetName, string | undefined>()
+export async function getMechanicImageUrl(name: MechanicAssetName): Promise<string | undefined> {
+  if (urlCache.has(name)) return urlCache.get(name)
   const canvas = await getMechanicImage(name)
-  const url = canvas ? canvas.toDataURL('image/png') : null
+  const url = canvas ? canvas.toDataURL('image/png') : undefined
   urlCache.set(name, url)
   return url
 }

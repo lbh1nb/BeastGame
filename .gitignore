@@ -2,6 +2,8 @@ node_modules/
 out/
 release/
 release_tmp/
+release_check/
+preview/
 dist/
 data/
 shoulege-shou-animals-assets/

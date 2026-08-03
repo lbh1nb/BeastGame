@@ -1552,3 +1552,55 @@ flowchart LR
 | `preview/earth-preview.html` | 更新为 v7/v8 对比预览 |
 | `scripts/gen-earth-preview.js` | 生成地球贴图球体预览页（含极点融合验证） |
 | `scripts/serve.js` | 本地静态预览服务器（开发辅助） |
+
+---
+
+## 二十四、v11 改动：动物扩充至56种 + 地球贴图升级v9（2026-08-04）
+
+### 24.1 改动总览
+
+在 v9（48种）基础上，由 work 模式 agent 提供素材并扩充至 **56 种动物**，同时将地球贴图由 v8 升级到 v9（Seedream 重新生成），并生成 2 个章节机制解除视频。
+
+```mermaid
+flowchart LR
+    A["work模式agent<br/>提供素材"] --> B["动物扩充至56种<br/>types/关卡/音频/名称"]
+    A --> C["地球贴图v8→v9<br/>Seedream生成"]
+    A --> D["机制解除视频<br/>moody/vine (Seedance)"]
+    B --> E["8种新动物<br/>static+active图片"]
+    C --> F["EarthGlobe.vue<br/>加载v9贴图"]
+```
+
+### 24.2 动物扩充至56种
+
+- `AnimalType` 从 48 种扩充至 **56 种**，分布在 6 章（第2/3/5/6章各 +2 种，第1/4章不变），共 8 种新动物：
+  - 第2章 野兽：`boar`（野猪）、`cheetah`（猎豹）
+  - 第3章 森林：`meerkat`（猫鼬）、`hare`（野兔）
+  - 第5章 海洋：`shark`（鲨鱼）、`crocodile`（鳄鱼）
+  - 第6章 综合：`flamingo`（火烈鸟）、`ostrich`（鸵鸟）
+- 新动物素材已放入 `resources/animals/static/{animal}.jpg` 与 `active/{animal}_active.jpg`（共 8 组）
+- 同步更新：`ANIMAL_NAMES`（中文名）、`ANIMAL_SFX_MAP`（叫声文件名）、`ANIMAL_SOUND_SEQUENCES`（回退合成音效）
+
+### 24.3 地球贴图升级 v9
+
+- 地球贴图由 `earth_texture_cartoon_v8.jpg` 升级为 `earth_texture_cartoon_v9.jpg`（Seedream 重新生成，风格更饱满）
+- `EarthGlobe.vue` 的 `loadEarthTexture` 改为加载 v9 贴图
+
+### 24.4 机制解除视频（暂未集成）
+
+- work 模式生成 2 个机制解除视频 `moody_resolve.mp4`、`vine_resolve.mp4`（Seedance），位于 `resources/mechanics/videos/`
+- **当前未集成**：游戏内机制解除仍使用 CSS 动画（`drawMechanicResolved`），视频作为预留素材，待剩余 3 个机制视频补齐后统一集成播放逻辑
+
+### 24.5 改动文件清单
+
+| 文件 | 改动 |
+|---|---|
+| `src/game/types.ts` | `AnimalType` 扩充至56种 |
+| `src/game/levels.config.ts` | 第2/3/5/6章各扩充至10种动物 |
+| `src/renderer/src/utils/pixel-animal.ts` | `ANIMAL_NAMES` 新增8种中文名 |
+| `src/renderer/src/audio/manager.ts` | `ANIMAL_SFX_MAP` 新增8种叫声映射 |
+| `src/renderer/src/audio/tone-generator.ts` | `ANIMAL_SOUND_SEQUENCES` 新增8种回退音效 |
+| `src/renderer/src/components/game/EarthGlobe.vue` | 贴图引用 v8→v9 |
+| `resources/animals/static/` | 新增8张静态动物图 |
+| `resources/animals/active/` | 新增8张悬停动态动物图 |
+| `resources/earth_texture_cartoon_v9.jpg` | **新增** AI 卡通地球贴图 |
+| `resources/mechanics/videos/` | **新增** 2个机制解除视频（暂未集成） |

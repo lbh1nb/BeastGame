@@ -301,7 +301,9 @@ export class GameEngine {
       // 消除后尝试解析场上机制牌
       const resolvedEvents = resolveMechanics(next)
       next.lastMechanicEvents.push(...resolvedEvents)
-      next.lastResolvedMechanics = resolvedEvents.map(e => e.type as string)
+      next.lastResolvedMechanics = resolvedEvents
+        .filter((e): e is Extract<MechanicEvent, { type: MechanicType }> => 'type' in e)
+        .map(e => e.type)
 
       // 返还点击次数
       const refund = state.config.mechanic?.clickRefund ?? 0
