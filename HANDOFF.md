@@ -63,12 +63,11 @@
 
 ## 四、待办事项（按下个会话要做的优先级）
 
-### 4.1 【最高优先级】Seedance 视频生成验证
-- 本会话已验证：**Seedance 无法使用**。插件 `trae-remote-official:seedance` 只声明 `GenerateVideo` 能力，无工具实现；TRAE 平台未内置 `GenerateVideo` 工具；Seedance 官方 API 于 2026-07-31 刚发布（火山方舟接口 8 月初开放）。
-- 用户将**新开会话**验证 Seedance 是否可用。**新会话须知**：
-  1. 若新会话工具列表出现 `GenerateVideo` 或 `seedance` skill → 说明工具已注入，可直接用 Seedance 生成真视频动画。
-  2. 若仍被报"未暴露该工具" → 平台工具路由未注入，需在 TRAE 界面启用 Seedance 插件或配置 `.mcp.json` 接入火山方舟 API（需用户提供 API Key）。
-  3. 当前功能已用「Seedream 静态图 + CSS 动画」完整实现，**不受 Seedance 缺失影响**，不会阻断开发。
+### 4.1 【协作模式】Seedance 素材由 work 模式 agent 提供（已确认）
+- **已确认（2026-08-04）**：code 模式下 Seedance 工具**不可用**，无法生成视频/图片；只有 **work 模式**可用 Seedance / Seedream。
+- **协作模式**：「work 模式 agent」负责生成图片与动画素材 → 放入 `resources/` 对应目录 → 「code 模式 agent」负责继续开发并集成素材。
+- **code 模式 agent（本会话）须知**：不要强行调用 Seedance/GenerateVideo（会失败）。需要图片/视频/动画素材时，请 work 模式 agent 生成后放到资源目录，再集成。
+- 当前功能已用「Seedream 静态图 + CSS 动画」完整实现，**不受 Seedance 缺失影响**。
 
 ### 4.2 待处理的 git 状态
 - 当前有**大量未提交改动**和**未跟踪文件**（见 `git status`），需要在合适时机 commit + push。
