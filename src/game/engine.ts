@@ -30,6 +30,7 @@ import {
   calcPropReward
 } from './scoring'
 import { getLevelById } from './levels.config'
+import { generateChallengeConfig } from './challenge'
 
 /** 初始道具数量 */
 const DEFAULT_PROPS: GameProps = { undo: 3, shuffle: 2, hint: 3, chisel: 0, clearProp: 0, pair: 0, slot: 0 }
@@ -157,6 +158,8 @@ export class GameEngine {
     let config: LevelConfig
     if (mode === 'level') {
       config = levelConfig ?? getLevelById(1) ?? makeDefaultConfig('classic3')
+    } else if (mode === 'challenge') {
+      config = levelConfig ?? generateChallengeConfig()
     } else {
       config = levelConfig ?? makeDefaultConfig(mode)
     }
