@@ -20,6 +20,14 @@
 
       <!-- 牌堆区 -->
       <div class="game-main">
+        <!-- 拆牌锤选择态提示条 -->
+        <div
+          v-if="gameStore.pendingProp === 'chisel'"
+          class="chisel-tip"
+          @click="gameStore.cancelPendingProp()"
+        >
+          🎯 请选择要拆除的牌（点击此处取消）
+        </div>
         <TileStack
           :tiles="engineState.tiles"
           :hint-tile-ids="engineState.hintTileIds"
@@ -43,6 +51,10 @@
           @undo="gameStore.useUndo()"
           @shuffle="gameStore.useShuffle()"
           @hint="gameStore.useHint()"
+          @chisel="gameStore.useChisel()"
+          @clear="gameStore.useClearProp()"
+          @pair="gameStore.usePair()"
+          @slot="gameStore.useSlot()"
         />
       </div>
 
@@ -295,6 +307,11 @@ onUnmounted(() => {
 
 function onPick(tileId: number): void {
   if (paused.value) return
+  // 拆牌锤选择态：点击牌即执行拆牌
+  if (gameStore.pendingProp === 'chisel') {
+    gameStore.useChisel(tileId)
+    return
+  }
   gameStore.pickTile(tileId)
 }
 
@@ -342,12 +359,30 @@ function formatTime(sec: number): string {
 }
 
 .game-main {
+  position: relative;
   flex: 1;
   min-height: 0;
   background: #fffaf0;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
+}
+
+/* 拆牌锤选择态提示条 */
+.chisel-tip {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
 }
 
 .prop-float {

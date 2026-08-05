@@ -29,13 +29,54 @@
       <span class="prop-badge" v-if="props.hint > 0">{{ props.hint }}</span>
       <span class="prop-label">提示</span>
     </button>
+
+    <div class="prop-sep"></div>
+
+    <button
+      class="prop-btn"
+      :disabled="disabled || props.chisel <= 0"
+      @click="emit('chisel')"
+    >
+      <span class="prop-icon">🔨</span>
+      <span class="prop-badge" v-if="props.chisel > 0">{{ props.chisel }}</span>
+      <span class="prop-label">拆牌锤</span>
+    </button>
+
+    <button
+      class="prop-btn"
+      :disabled="disabled || props.clearProp <= 0"
+      @click="emit('clear')"
+    >
+      <span class="prop-icon">🧹</span>
+      <span class="prop-badge" v-if="props.clearProp > 0">{{ props.clearProp }}</span>
+      <span class="prop-label">槽清空</span>
+    </button>
+
+    <button
+      class="prop-btn"
+      :disabled="disabled || props.pair <= 0"
+      @click="emit('pair')"
+    >
+      <span class="prop-icon">⚡</span>
+      <span class="prop-badge" v-if="props.pair > 0">{{ props.pair }}</span>
+      <span class="prop-label">一键配对</span>
+    </button>
+
+    <button
+      class="prop-btn"
+      :disabled="disabled || props.slot <= 0"
+      @click="emit('slot')"
+    >
+      <span class="prop-icon">➕</span>
+      <span class="prop-badge" v-if="props.slot > 0">{{ props.slot }}</span>
+      <span class="prop-label">扩容</span>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-/**
- * 道具栏（右下角浮动）
- * - 撤回 / 洗牌 / 提示 三个圆形按钮
+/** 道具栏（右下角浮动）
+ * - 撤回 / 洗牌 / 提示 / 拆牌锤 / 槽位清空 / 一键配对 / 临时扩容 圆形按钮
  * - 显示剩余数量徽章；数量为 0 时禁用
  */
 import type { GameProps } from '@game/types'
@@ -51,6 +92,10 @@ const emit = defineEmits<{
   (e: 'undo'): void
   (e: 'shuffle'): void
   (e: 'hint'): void
+  (e: 'chisel'): void
+  (e: 'clear'): void
+  (e: 'pair'): void
+  (e: 'slot'): void
 }>()
 </script>
 
@@ -67,6 +112,15 @@ const emit = defineEmits<{
 .prop-bar--disabled {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* 分隔符：隔离基础道具与新道具 */
+.prop-sep {
+  width: 2px;
+  align-self: stretch;
+  margin: 6px 2px;
+  background: var(--color-border);
+  border-radius: 1px;
 }
 
 .prop-btn {

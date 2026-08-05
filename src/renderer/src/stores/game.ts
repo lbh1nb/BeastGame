@@ -27,6 +27,9 @@ const MECHANIC_ANIM_DURATION = {
   revealing: 1000
 } as const
 
+/** 待选目标道具（如拆牌锤需选择一张牌作为目标） */
+type PendingProp = 'chisel' | null
+
 /**
  * 当前局游戏状态 Store
  * - 持有引擎返回的 GameState
@@ -39,6 +42,8 @@ const MECHANIC_ANIM_DURATION = {
 export const useGameStore = defineStore('game', () => {
   /** 引擎当前状态 */
   const engineState = ref<GameState | null>(null)
+  /** 当前待选目标道具（如拆牌锤需选牌），选中后执行并清空 */
+  const pendingProp = ref<PendingProp>(null)
   /** 本局资源（动物/机制图片）是否已就绪：就绪后才关闭"加载中"界面渲染牌堆，避免牌面空白与卡顿 */
   const resourcesReady = ref(false)
   /** 闯关模式选中的关卡 ID */
@@ -113,6 +118,7 @@ export const useGameStore = defineStore('game', () => {
     finalScore.value = 0
     selectedLevelId.value = levelId ?? null
     resourcesReady.value = false
+    pendingProp.value = null
 
     try {
       let levelConfig: LevelConfig | undefined
@@ -163,6 +169,12 @@ export const useGameStore = defineStore('game', () => {
   async function pickTile(tileId: number): Promise<void> {
     const s = engineState.value
     if (!s || s.status !== 'playing') return
+
+    // 待选目标道具：处于拆牌锤选择态时，点击牌即执行拆牌，不走普通点击逻辑
+    if (pendingProp.value === 'chisel') {
+      await useChisel(tileId)
+      return
+    }
 
     const prevMatchTotal = s.matchCount_total
     const prevCombo = s.combo
@@ -273,6 +285,73 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * 使用拆牌锤
+   * - 未传 tileId：进入选择态，等待玩家选择要拆除的牌
+   * - 已传 tileId：对指定牌执行拆除
+   */
+  async function useChisel(tileId?: number): Promise<void> {
+    const s = engineState.value
+    if (!s || s.status !== 'playing' || s.props.chisel <= 0) return
+    // 未指定目标：进入选择态
+    if (tileId == null) {
+      pendingProp.value = 'chisel'
+      return
+    }
+    try {
+      const next = GameEngine.useChisel(s, tileId)
+      pendingProp.value = null
+      applyState(next)
+      if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
+    } catch (e) {
+      console.error('[game] 拆牌锤失败', e)
+    }
+  }
+
+  /** 使用槽位清空道具 */
+  async function useClearProp(): Promise<void> {
+    const s = engineState.value
+    if (!s || s.status !== 'playing' || s.props.clearProp <= 0) return
+    try {
+      const next = GameEngine.useClearProp(s)
+      applyState(next)
+      if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
+    } catch (e) {
+      console.error('[game] 槽位清空失败', e)
+    }
+  }
+
+  /** 使用一键配对道具 */
+  async function usePair(): Promise<void> {
+    const s = engineState.value
+    if (!s || s.status !== 'playing' || s.props.pair <= 0) return
+    try {
+      const next = GameEngine.usePair(s)
+      applyState(next)
+      if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
+    } catch (e) {
+      console.error('[game] 一键配对失败', e)
+    }
+  }
+
+  /** 使用临时扩容道具 */
+  async function useSlot(): Promise<void> {
+    const s = engineState.value
+    if (!s || s.status !== 'playing' || s.props.slot <= 0) return
+    try {
+      const next = GameEngine.useSlot(s)
+      applyState(next)
+      if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
+    } catch (e) {
+      console.error('[game] 临时扩容失败', e)
+    }
+  }
+
+  /** 取消当前待选目标道具的选择态 */
+  function cancelPendingProp(): void {
+    pendingProp.value = null
+  }
+
+  /**
    * 局终结算
    * - 计算最终分数
    * - 保存单局记录到 SQLite
@@ -353,6 +432,7 @@ export const useGameStore = defineStore('game', () => {
     selectedLevelId.value = null
     hasEnded.value = false
     finalScore.value = 0
+    pendingProp.value = null
   }
 
   /** 清理倒计时定时器 */
@@ -573,6 +653,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     engineState,
+    pendingProp,
     resourcesReady,
     selectedLevelId,
     soundEnabled,
@@ -593,6 +674,11 @@ export const useGameStore = defineStore('game', () => {
     useUndo,
     useShuffle,
     useHint,
+    useChisel,
+    useClearProp,
+    usePair,
+    useSlot,
+    cancelPendingProp,
     endGame,
     restart,
     exitToHome,

@@ -17,7 +17,8 @@ export const useUserStore = defineStore('user', () => {
   const bestScores = ref<Record<GameMode, number>>({
     classic3: 0,
     classic4: 0,
-    level: 0
+    level: 0,
+    challenge: 0
   })
 
   /** 加载所有关卡进度 */
@@ -53,7 +54,7 @@ export const useUserStore = defineStore('user', () => {
         }
       })
     )
-    const map: Record<GameMode, number> = { classic3: 0, classic4: 0, level: 0 }
+    const map: Record<GameMode, number> = { classic3: 0, classic4: 0, level: 0, challenge: 0 }
     for (const [m, v] of results) {
       map[m] = v
     }
