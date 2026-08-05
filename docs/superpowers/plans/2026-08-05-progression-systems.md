@@ -145,12 +145,13 @@ export interface StarInput {
 export function calcStars(input: StarInput): number
 ```
 
-归一化规则：
+归一化规则（分数主导乘数式，已定案 2026-08-05）：
 - `fScore = min(1, score / (tileCount * 12))`
 - `fTime = min(1, timeLeft / timeLimit)`
 - `fProps = max(0, 1 - propsUsed / 3)`
 - `fClick = clickLeft < 0 ? 1 : min(1, clickLeft / 20)`
-- `starScore = 0.4*fScore + 0.2*fTime + 0.25*fProps + 0.15*fClick`
+- `starScore = fScore * (BASE + 0.2*fTime + 0.2*fProps + 0.2*fClick)`，其中 `BASE = 0.4`
+- 因 `BASE + 0.2 + 0.2 + 0.2 = 1.0`，`starScore ≤ fScore`，分数不满则最高 2 星。
 - 映射：`>=0.85 → 3`，`>=0.6 → 2`，`>=0.3 → 1`，否则 0。
 
 - [ ] **Step 2: 补充 cmd 验证脚本（放 scripts/ 临时，验证后删除）**
