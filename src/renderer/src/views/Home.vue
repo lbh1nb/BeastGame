@@ -50,6 +50,7 @@
     <div class="footer">
       <BaseButton size="md" type="ghost" @click="go('/settings')">⚙️ 设置</BaseButton>
       <BaseButton size="md" type="ghost" @click="go('/records')">🏆 记录</BaseButton>
+      <BaseButton size="md" type="ghost" @click="go('/shop')">🛒 商店</BaseButton>
     </div>
   </div>
 </template>
@@ -59,7 +60,7 @@
  * 主菜单
  * - 顶部标题 + 副标题（渐变色）
  * - 中间 3 个大按钮：经典3消 / 四消模式 / 闯关模式
- * - 底部 2 个小按钮：设置 / 记录
+ * - 底部 3 个小按钮：设置 / 记录 / 商店
  * - 四周散布 8 只装饰小动物，浮动+悬停弹跳眨眼
  * - 进入页面播放主菜单 BGM，离开时停止
  */
