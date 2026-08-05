@@ -377,6 +377,8 @@ export function clearAllData(): void {
     db.exec('DELETE FROM game_records')
     db.exec('DELETE FROM level_progress')
     db.exec('DELETE FROM achievements')
+    db.exec('DELETE FROM player_inventory')
+    db.exec('DELETE FROM collection')
   })
   tx()
   // 重新初始化默认数据
@@ -438,12 +440,13 @@ export function getInventory(key: string): number {
  */
 export function addInventory(key: string, delta: number): number {
   const db = getDb()
+  const next = Math.max(0, getInventory(key) + delta)
   db.prepare(
     `INSERT INTO player_inventory (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = value + excluded.value`
-  ).run(key, delta)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(key, next)
   saveDb()
-  return getInventory(key)
+  return next
 }
 
 /**

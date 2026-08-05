@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- 玩家库存（金币 + 新道具数量）
 CREATE TABLE IF NOT EXISTS player_inventory (
   key   TEXT PRIMARY KEY,
-  value INTEGER NOT NULL DEFAULT 0
+  value INTEGER NOT NULL DEFAULT 0 CHECK (value >= 0)
 );
 
 -- 收藏品收集进度
