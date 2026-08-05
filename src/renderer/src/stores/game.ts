@@ -428,6 +428,9 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 收藏品掉落（仅闯关/挑战通关）：按星际概率掉收藏品，重复则转金币
+    // TODO(挑战模式随机配置生成)：挑战模式的 config 目前来自 makeDefaultConfig（chapter=0、无 timeLimit），
+    // 会导致 calcStars 返回 0、动物池为空、rollCollection 兜底掉落 sheep；
+    // 该逻辑依赖"挑战模式随机配置生成"（后续任务）落地后自动生效。
     if (result === 'win' && (s.mode === 'level' || s.mode === 'challenge')) {
       await handleCollectionDrop(s, score)
     }
@@ -454,6 +457,7 @@ export const useGameStore = defineStore('game', () => {
     selectedLevelId.value = null
     hasEnded.value = false
     finalScore.value = 0
+    lastCollection.value = null
     pendingProp.value = null
   }
 

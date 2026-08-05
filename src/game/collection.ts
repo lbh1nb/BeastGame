@@ -71,7 +71,7 @@ export function rollCollection(
     }
   }
 
-  const pool = chapterAnimals.length > 0 ? chapterAnimals : [FALLBACK_ANIMAL as AnimalType]
+  const pool = chapterAnimals.length > 0 ? chapterAnimals : [FALLBACK_ANIMAL]
   const id = pool[Math.floor(Math.random() * pool.length)]
 
   return { id, rarity }
