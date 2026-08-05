@@ -51,7 +51,7 @@ export type MechanicEvent =
   /** vine/bubble 被点击破除（藤断裂/气泡破） */
   | { kind: 'broken'; tileId: number; type: MechanicType }
   /** hidden 翻开（问号消失露出动物） */
-  | { kind: 'revealed'; tileId: number }
+  | { kind: 'revealed'; tileId: number; type: MechanicType }
 
 /** 牌面机制状态 */
 export interface MechanicState {

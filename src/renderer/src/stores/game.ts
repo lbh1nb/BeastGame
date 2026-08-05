@@ -5,6 +5,7 @@ import { getLevelById } from '@game/levels.config'
 import type { GameMode, GameState, LevelConfig, AnimalType, MechanicType } from '@game/types'
 import { preloadAnimalImages } from '@utils/animal-image'
 import { preloadMechanicImages } from '@utils/mechanic-image'
+import { preloadMechanicVideos } from '@utils/mechanic-video'
 import audioManager, {
   getComboTierCrossed,
   type ComboTier
@@ -20,9 +21,10 @@ export interface MechanicAnimState {
 
 /** 动画时长（ms） */
 const MECHANIC_ANIM_DURATION = {
-  resolving: 650,
-  breaking: 600,
-  revealing: 500
+  // 与机制解除视频时长对齐：4 秒源视频以 4 倍速播放，约 1 秒，故动画时长设为 1000ms
+  resolving: 1000,
+  breaking: 1000,
+  revealing: 1000
 } as const
 
 /**
@@ -37,6 +39,8 @@ const MECHANIC_ANIM_DURATION = {
 export const useGameStore = defineStore('game', () => {
   /** 引擎当前状态 */
   const engineState = ref<GameState | null>(null)
+  /** 本局资源（动物/机制图片）是否已就绪：就绪后才关闭"加载中"界面渲染牌堆，避免牌面空白与卡顿 */
+  const resourcesReady = ref(false)
   /** 闯关模式选中的关卡 ID */
   const selectedLevelId = ref<number | null>(null)
   /** 音效开关 */
@@ -101,9 +105,11 @@ export const useGameStore = defineStore('game', () => {
    */
   async function startGame(mode: GameMode, levelId?: number): Promise<void> {
     clearPickedFlash()
+    clearMechanicAnims()
     hasEnded.value = false
     finalScore.value = 0
     selectedLevelId.value = levelId ?? null
+    resourcesReady.value = false
 
     try {
       let levelConfig: LevelConfig | undefined
@@ -116,22 +122,30 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // 立即初始化引擎，让"加载中"界面尽快关闭（布局/绘图计算不依赖图片）
+      // 立即初始化引擎（布局/绘图计算不依赖图片），但牌堆渲染由 resourcesReady 控制
       engineState.value = GameEngine.init(mode, levelConfig)
 
-      // 后台预加载本关用到的动物与机制图片（不阻塞游戏启动，带超时兜底）
+      // 预加载本关用到的动物与机制图片（Promise 缓存去重后很快），就绪后再关闭"加载中"界面，
+      // 确保牌面图片已就绪、无空白、无逐张补绘卡顿
       const animals: AnimalType[] = levelConfig?.animals ?? makeDefaultConfig(mode).animals
-      const withTimeout = (p: Promise<unknown>, ms: number): Promise<void> =>
-        Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]).then(() => undefined)
-      withTimeout(
-        Promise.all([preloadAnimalImages(animals), preloadMechanicImages()]),
-        1500
-      ).catch((e) => {
-        console.warn('[game] 预加载图片失败（不影响游戏运行）', e)
+      try {
+        await Promise.all([
+          preloadAnimalImages(animals),
+          preloadMechanicImages()
+        ])
+      } catch (e) {
+        console.warn('[game] 预加载资源失败（不影响游戏运行）', e)
+      }
+      resourcesReady.value = true
+
+      // 机制解除视频单独后台预加载 + 预热解码（不阻塞图片加载，避免影响启动）
+      preloadMechanicVideos().catch((e) => {
+        console.warn('[game] 预加载机制视频失败（不影响游戏运行）', e)
       })
     } catch (e) {
       console.error('[game] 初始化游戏失败', e)
       engineState.value = null
+      resourcesReady.value = false
     }
   }
 
@@ -157,6 +171,12 @@ export const useGameStore = defineStore('game', () => {
       picked = result.picked
     } catch (e) {
       console.error('[game] pickTile 失败', e)
+      return
+    }
+
+    // 若引擎已判定结束（含点击次数耗尽），无论是否入槽都直接结算
+    if (engineState.value && (engineState.value.status === 'won' || engineState.value.status === 'lost')) {
+      await endGame()
       return
     }
 
@@ -322,6 +342,7 @@ export const useGameStore = defineStore('game', () => {
     clearPickedFlash()
     clearMechanicAnims()
     engineState.value = null
+    resourcesReady.value = false
     selectedLevelId.value = null
     hasEnded.value = false
     finalScore.value = 0
@@ -344,6 +365,10 @@ export const useGameStore = defineStore('game', () => {
     const nextMap = new Map(mechanicAnims.value)
     nextMap.set(tileId, state)
     mechanicAnims.value = nextMap
+    // 机制解除/破除/翻开时播放对应的专属短音效，增强反馈
+    if (type && soundEnabled.value) {
+      audioManager.playMechanicSound(type)
+    }
     const duration = MECHANIC_ANIM_DURATION[kind]
     const timer = window.setTimeout(() => {
       const m = new Map(mechanicAnims.value)
@@ -395,7 +420,7 @@ export const useGameStore = defineStore('game', () => {
           } else if (ev.kind === 'broken') {
             triggerMechanicAnim(ev.tileId, 'breaking', ev.type)
           } else if (ev.kind === 'revealed') {
-            triggerMechanicAnim(ev.tileId, 'revealing')
+            triggerMechanicAnim(ev.tileId, 'revealing', ev.type)
           }
         }
       }
@@ -503,6 +528,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     engineState,
+    resourcesReady,
     selectedLevelId,
     soundEnabled,
     finalScore,

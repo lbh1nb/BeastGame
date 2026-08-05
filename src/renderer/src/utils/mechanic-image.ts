@@ -5,6 +5,8 @@
  * - 结果缓存，避免重复处理
  */
 
+import { assetUrl } from './asset-url'
+
 /** 机制元素类型 */
 export type MechanicAssetName =
   | 'moody_cloud'
@@ -28,22 +30,29 @@ const BG_TOLERANCE = 45
 /** 抠图处理前先缩到的最大边长（px），大幅降低逐像素扫描开销 */
 const MAX_PROCESS_SIZE = 128
 
-/** 缓存 key = 文件名 */
-const cache = new Map<MechanicAssetName, HTMLCanvasElement | null>()
+/** 缓存 key = 文件名，值为 Promise（同 key 并发只处理一次，避免预加载与组件渲染重复处理导致卡顿） */
+const cache = new Map<MechanicAssetName, Promise<HTMLCanvasElement | null>>()
 
 /**
  * 获取某机制元素的抠图结果（透明背景，已裁剪主体边界）
  * @param name 元素名（不含扩展名）
  * @returns 抠图后的 canvas，失败返回 null
  */
-export async function getMechanicImage(name: MechanicAssetName): Promise<HTMLCanvasElement | null> {
-  if (cache.has(name)) return cache.get(name)!
+export function getMechanicImage(name: MechanicAssetName): Promise<HTMLCanvasElement | null> {
+  const existing = cache.get(name)
+  if (existing) return existing
 
+  // 使用自定义协议 assets:// 加载，避免 file:// 在 fetch 时被 CORS 拦截
+  const url = assetUrl(`mechanics/${name}.jpg`)
+  const p = loadMechanicImage(url)
+  cache.set(name, p)
+  return p
+}
+
+/** 实际加载并抠图（已按 key 去重，同一 url 只处理一次） */
+async function loadMechanicImage(url: string): Promise<HTMLCanvasElement | null> {
   let result: HTMLCanvasElement | null = null
   try {
-    const basePath = await window.gameAPI.asset.resolve('mechanics')
-    const url = 'file:///' + `${basePath}/${name}.jpg`.replace(/\\/g, '/')
-
     // 用 createImageBitmap + resize 解码直接缩小，避免解码全尺寸（1920x1920）大图
     let img: ImageBitmap | HTMLImageElement
     let pw: number
@@ -125,7 +134,6 @@ export async function getMechanicImage(name: MechanicAssetName): Promise<HTMLCan
     result = null
   }
 
-  cache.set(name, result)
   return result
 }
 

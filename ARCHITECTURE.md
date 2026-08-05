@@ -1674,3 +1674,48 @@ flowchart LR
 效果：以第1章 L4（240 张）为例，生气牌从约 96 张降至约 53 张，实测可见生气牌约 10 张、可点击约 19 张，不再卡关。
 
 > 其他机制（藤蔓/气泡/躲猫猫）为可主动解除机制，不属硬阻挡，无需调比例。
+
+## 二十六、v13 改动：机制解除视频集成（2026-08-05）
+
+### 26.1 改动总览
+
+work 模式 agent 用 Seedance 生成了 5 个机制解除视频（`resources/mechanics/videos/{mechanic}_resolve.mp4`），code 模式本会话将其集成到牌面动画中，替代原先的「静态图 + CSS 动画」方案。
+
+| 机制 | 动画阶段 | 视频文件 | 使用方式 |
+|---|---|---|---|
+| 闹脾气 moody | resolving | moody_resolve.mp4 | `<video>` 播放 |
+| 贪睡 sleepy | resolving | sleepy_resolve.mp4 | `<video>` 播放 |
+| 藤蔓 vine | breaking | vine_resolve.mp4 | `<video>` 播放 |
+| 气泡 bubble | breaking | bubble_resolve.mp4 | `<video>` 播放 |
+| 躲猫猫 hidden | revealing | hidden_resolve.mp4 | **不使用视频**，保留 CSS 翻牌动画 |
+
+视频约束与处理：
+- 源视频 4 秒，解除动画仅需 ~1 秒，用 `playbackRate = 4` 加速播放。
+- 480p 1:1 正方形，用 `object-fit: cover` 填满牌面。
+- `hidden` 为翻牌（revealing），语义与其它 4 种（resolving/breaking）不同，单独保留 CSS `rotateY` 翻牌，不接入视频。
+
+### 26.2 关键实现
+
+1. **`src/renderer/src/utils/mechanic-video.ts`（新增）**
+   - `getMechanicVideoUrl(mechanic)`：解析 `file://` 视频 URL，`hidden` 返回 `undefined`，结果缓存。
+   - `preloadMechanicVideos()`：预加载全部视频 URL 与数据，避免首次触发时等待/闪白。
+   - `MECHANIC_VIDEO_PLAYBACK_RATE = 4`：4 秒源视频加速到 ~1 秒。
+
+2. **`src/renderer/src/components/game/Tile.vue`**
+   - 机制遮罩层新增 `<video>` 分支：`resolving`/`breaking` 且视频可用时播放视频，否则回退静态图 + CSS 动画。
+   - **修复遮罩层瞬间消失问题**：原遮罩条件 `mechanicStuck`（stuck>0）在解除瞬间 stuck 被置 0 会立即隐藏，导致动画/视频无法显示 → 改为 `mechanicStuck || isResolvingOrBreaking`，动画期间保持显示。
+   - 视频模式下关闭叠加特效（闪电/爆发/闪光/粒子），避免与视频重复。
+   - 回退静态图动画时长由 0.65s/0.55s 与动画窗口对齐为 1s。
+
+3. **`src/renderer/src/stores/game.ts`**
+   - `MECHANIC_ANIM_DURATION` 的 `resolving`/`breaking` 由 650/600ms 调整为 **1000ms**，与 4 倍速视频时长对齐，确保视频完整播放。
+   - 预加载阶段接入 `preloadMechanicVideos()`。
+
+### 26.3 改动文件清单
+
+| 文件 | 说明 |
+|---|---|
+| `src/renderer/src/utils/mechanic-video.ts` | 新增：视频加载/缓存/预加载 |
+| `src/renderer/src/components/game/Tile.vue` | 视频播放 + 遮罩保持动画期间显示 |
+| `src/renderer/src/stores/game.ts` | 动画时长对齐 + 视频预加载 |
+| `resources/mechanics/videos/*.mp4` | 5 个机制解除视频（work 模式生成） |

@@ -74,25 +74,25 @@ const CHAPTER_MECHANICS: Record<number, {
     introAnimal: 'sheep',
     introTitle: '小动物闹脾气啦！',
     introBody: '有些小动物耍别扭了（😠乌云遮罩），点击无效。消除任意一组后它们就会变开心（😊），然后才能点哦~',
-    l3: { type: 'moody', ratio: 0.18 },
-    l4: { type: 'moody', ratio: 0.22 },
-    l5: { type: 'moody', ratio: 0.22 }
+    l3: { type: 'moody', ratio: 0.25 },
+    l4: { type: 'moody', ratio: 0.28 },
+    l5: { type: 'moody', ratio: 0.28 }
   },
   2: {
     introAnimal: 'fox',
     introTitle: '藤蔓缠绕！小心点击次数',
-    introBody: '部分牌被藤蔓缠绕（🌿），点击会消耗次数。藤蔓需多点一次解除。每消除一组返还3次点击，点数用完就不能点了！',
-    l3: { type: 'vine', ratio: 0.30, clickLimit: 95, clickRefund: 3 },
-    l4: { type: 'vine', ratio: 0.40, clickLimit: 100, clickRefund: 3 },
-    l5: { type: 'vine', ratio: 0.40, clickLimit: 100, clickRefund: 3 }
+    introBody: '部分牌被藤蔓缠绕（🌿），点击会消耗次数。藤蔓需多点一次解除。每消除一组返还4次点击，点数用完就不能点了！',
+    l3: { type: 'vine', ratio: 0.22, clickLimit: 120, clickRefund: 4 },
+    l4: { type: 'vine', ratio: 0.26, clickLimit: 130, clickRefund: 4 },
+    l5: { type: 'vine', ratio: 0.30, clickLimit: 150, clickRefund: 4 }
   },
   3: {
     introAnimal: 'panda',
     introTitle: '小动物在睡觉呢~',
     introBody: '部分动物睡得正香（💤气泡+闭眼），消除一次后会被唤醒，然后才能点击入槽哦~',
-    l3: { type: 'sleepy', ratio: 0.18 },
-    l4: { type: 'sleepy', ratio: 0.22 },
-    l5: { type: 'sleepy', ratio: 0.22 }
+    l3: { type: 'sleepy', ratio: 0.25 },
+    l4: { type: 'sleepy', ratio: 0.28 },
+    l5: { type: 'sleepy', ratio: 0.28 }
   },
   4: {
     introAnimal: 'owl',
@@ -122,9 +122,9 @@ const CHAPTER_MECHANICS: Record<number, {
 
 /** 第6章随机机制池 */
 const CHAOS_POOL: NonNullable<LevelConfig['mechanic']>[] = [
-  { type: 'moody', ratio: 0.15 },
+  { type: 'moody', ratio: 0.18 },
   { type: 'vine', ratio: 0.20, clickLimit: 95, clickRefund: 3 },
-  { type: 'sleepy', ratio: 0.15 },
+  { type: 'sleepy', ratio: 0.18 },
   { type: 'hidden', ratio: 0.20 },
   { type: 'bubble', ratio: 0.20, clickLimit: 95, clickRefund: 3 }
 ]
@@ -165,11 +165,11 @@ function buildLevelsFromSeed(seed: LevelSeed): LevelConfig[] {
         mechanic = mecCfg.l5 ?? undefined
       }
     }
-    // 第6章 普通关：L3=1种(15%), L4=2种(各18%)
+    // 第6章 普通关：L3=1种(18%), L4=2种(各20%)
     if (seed.chapter === 6 && i >= 2 && i < 4) {
       mechanic = i === 2
-        ? { ...CHAOS_POOL[0], ratio: 0.15 }
-        : { ...CHAOS_POOL[0], ratio: 0.18 }
+        ? { ...CHAOS_POOL[0], ratio: 0.18 }
+        : { ...CHAOS_POOL[0], ratio: 0.20 }
     }
 
     levels.push({

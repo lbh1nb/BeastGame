@@ -7,7 +7,7 @@
       'tile--removed': tile.removed,
       'tile--hover': isHover,
       'tile--rejected': rejectedBump,
-      'tile--revealing': animKind === 'revealing',
+      'tile--revealing': animKind === 'revealing' && !isVideoMode,
       'tile--animal-hidden': animKind !== 'revealing' && isHiddenStuck
     }"
     :style="{ background: bgColor }"
@@ -16,7 +16,7 @@
     @mouseleave="handleMouseLeave"
   >
     <PixelAnimal
-      :class="{ 'pixel-animal--hidden-in': animKind === 'revealing' }"
+      :class="{ 'pixel-animal--hidden-in': animKind === 'revealing' && !isVideoMode }"
       v-show="!isHiddenStuck || animKind === 'revealing'"
       :animal="tile.animal"
       :hover="isSelected"
@@ -27,40 +27,51 @@
       class="tile-pick-ripple"
     />
 
-    <!-- 机制遮罩层 -->
+    <!-- 机制遮罩层（stuck 时显示机制图；resolving/breaking/revealing 动画期间保持显示以播放视频/动画） -->
     <div
-      v-if="mechanicType && mechanicStuck && !isCovered && !tile.removed"
+      v-if="effectiveMechanicType && !isCovered && !tile.removed && (mechanicStuck || isAnimating)"
       class="mech-overlay"
       :class="[
-        `mech--${mechanicType}`,
+        `mech--${effectiveMechanicType}`,
         animClass,
-        { 'mech--hidden-out': animKind === 'revealing' }
+        { 'mech--hidden-out': animKind === 'revealing' && !isVideoMode }
       ]"
     >
-      <!-- 主元素图 -->
+      <!-- 主元素图（静态图模式：idle 或视频不可用） -->
       <img
+        v-if="!isVideoMode"
         class="mech-main"
         :src="mainImg"
-        :alt="mechanicType"
+        :alt="effectiveMechanicType"
         draggable="false"
       />
-      <!-- 闪电闪光层（仅 moody idle 时） -->
-      <div v-if="mechanicType === 'moody'" class="mech-lightning" />
-      <!-- 消失爆发特效层（resolving/breaking 时显示，强调是哪个机制被解除） -->
+      <!-- 机制解除视频（resolving/breaking/revealing 时播放，4秒源加速到~1秒） -->
+      <video
+        v-else
+        ref="videoEl"
+        class="mech-video"
+        :src="videoUrl"
+        muted
+        playsinline
+        @loadedmetadata="onVideoLoaded"
+      />
+      <!-- 闪电闪光层（仅 moody idle 时，视频模式不叠加） -->
+      <div v-if="effectiveMechanicType === 'moody' && !isVideoMode" class="mech-lightning" />
+      <!-- 消失爆发特效层（视频模式不叠加，视频已含完整动画） -->
       <img
-        v-if="showBurst && burstImg"
+        v-if="!isVideoMode && showBurst && burstImg"
         class="mech-burst"
         :src="burstImg"
-        :alt="`burst-${mechanicType}`"
+        :alt="`burst-${effectiveMechanicType}`"
         draggable="false"
       />
-      <!-- 解除瞬间的白色闪光 -->
-      <div v-if="showBurst" class="mech-flash" />
+      <!-- 解除瞬间的白色闪光（视频模式不叠加） -->
+      <div v-if="!isVideoMode && showBurst" class="mech-flash" />
     </div>
 
-    <!-- 解除/破除粒子（在 resolving/breaking 期间显示） -->
+    <!-- 解除/破除粒子（仅在静态图模式显示，视频模式不叠加） -->
     <div
-      v-if="showParticles"
+      v-if="!isVideoMode && showParticles"
       class="mech-particles"
     >
       <img
@@ -98,6 +109,7 @@ import type { Tile as TileType, MechanicType } from '@game/types'
 import PixelAnimal from './PixelAnimal.vue'
 import { getAnimalBgColor } from '@utils/pixel-animal'
 import { getMechanicImageUrl, type MechanicAssetName } from '@utils/mechanic-image'
+import { getMechanicVideoUrl, MECHANIC_VIDEO_PLAYBACK_RATE } from '@utils/mechanic-video'
 import { useGameStore } from '@stores/game'
 
 interface Props {
@@ -135,6 +147,24 @@ const mechanicType = computed<MechanicType | null>(() => props.tile.mechanicStat
 const mechanicStuck = computed(() => (props.tile.mechanicState?.stuck ?? 0) > 0)
 const isHiddenStuck = computed(() => mechanicType.value === 'hidden' && mechanicStuck.value)
 
+/** 当前动画阶段（来自 store） */
+const animState = computed(() => gameStore.mechanicAnims.get(props.tile.id) ?? null)
+const animKind = computed(() => animState.value?.kind ?? null)
+
+/**
+ * 生效机制类型：优先取牌面 mechanicState.type；
+ * hidden 翻开时 mechanicState 已被删除，但动画期间 animState.type 仍为 'hidden'，用于保持遮罩/视频显示
+ */
+const effectiveMechanicType = computed<MechanicType | null>(
+  () => mechanicType.value ?? animState.value?.type ?? null
+)
+
+/** 是否处于机制动画阶段（resolving/breaking/revealing，期间遮罩保持显示以播放视频/动画） */
+const isAnimating = computed(() => animKind.value !== null)
+
+/** 是否使用视频播放机制动画（resolving/breaking/revealing 且视频可用） */
+const isVideoMode = computed(() => isAnimating.value && !!videoUrl.value)
+
 /** 主元素图（懒加载） */
 const mainImg = ref<string | undefined>(undefined)
 const burstImg = ref<string | undefined>(undefined)
@@ -154,24 +184,58 @@ const burstAssetMap: Record<MechanicType, MechanicAssetName> = {
 }
 
 async function loadMainImg() {
-  if (!mechanicType.value || !mechanicStuck.value) {
+  const type = effectiveMechanicType.value
+  if (!type || !mechanicStuck.value) {
     mainImg.value = undefined
     burstImg.value = undefined
     return
   }
-  const url = await getMechanicImageUrl(assetMap[mechanicType.value])
-  const burstUrl = await getMechanicImageUrl(burstAssetMap[mechanicType.value])
+  const url = await getMechanicImageUrl(assetMap[type])
+  const burstUrl = await getMechanicImageUrl(burstAssetMap[type])
   // 仅在仍需要时赋值
-  if (mechanicType.value && mechanicStuck.value) {
+  if (effectiveMechanicType.value && mechanicStuck.value) {
     mainImg.value = url
     burstImg.value = burstUrl
   }
 }
-watch([mechanicType, mechanicStuck], loadMainImg, { immediate: true })
+watch([effectiveMechanicType, mechanicStuck], loadMainImg, { immediate: true })
 
-/** 当前动画阶段（来自 store） */
-const animState = computed(() => gameStore.mechanicAnims.get(props.tile.id) ?? null)
-const animKind = computed(() => animState.value?.kind ?? null)
+/** 机制解除视频 URL（resolving/breaking 时播放，hidden 无视频） */
+const videoUrl = ref<string | undefined>(undefined)
+const videoEl = ref<HTMLVideoElement | null>(null)
+
+async function loadVideoUrl() {
+  const type = effectiveMechanicType.value
+  if (!type) {
+    videoUrl.value = undefined
+    return
+  }
+  videoUrl.value = await getMechanicVideoUrl(type)
+}
+// 需在挂载时立即加载，且动画触发（isAnimating 变化）时即使机制类型不变也要重新加载，
+// 否则 stuck 机制（moody/vine/sleepy/bubble）动画期间 effectiveMechanicType 不变、watch 不触发，视频不会播放
+watch([effectiveMechanicType, isAnimating], loadVideoUrl, { immediate: true })
+
+/** 视频加载完成后设置播放速率（4 秒源视频加速到 ~1 秒）并显式播放 */
+function onVideoLoaded() {
+  const v = videoEl.value
+  if (!v) return
+  v.playbackRate = MECHANIC_VIDEO_PLAYBACK_RATE
+  v.muted = true
+  // 等到下一帧确保视频数据就绪后再播放，避免在未就绪时被 abort
+  const tryPlay = () => {
+    v.play()
+      .then(() => {
+        console.warn('[Tile] video play ok', effectiveMechanicType.value)
+      })
+      .catch((e) => {
+        console.warn('[Tile] video play fail', e?.name, e?.message)
+        // 视频数据未就绪时重试一次
+        setTimeout(() => v.play().catch(() => {}), 120)
+      })
+  }
+  requestAnimationFrame(tryPlay)
+}
 
 /** overlay 动画类 */
 const animClass = computed(() => {
@@ -443,6 +507,16 @@ onMounted(() => {
   transform-origin: center center;
 }
 
+/* 机制解除视频（480p 1:1，cover 填满牌面） */
+.mech-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  pointer-events: none;
+  background: transparent;
+}
+
 /* ---- idle 持续动画（各类型差异，Q萌像素风优化） ---- */
 .mech-idle.mech--moody .mech-main {
   animation: mech-idle-float 2s ease-in-out infinite;
@@ -511,7 +585,7 @@ onMounted(() => {
 /* ---- resolving 解除动画（moody 云散 / sleepy 醒） ---- */
 /* 主元素先放大强调（让玩家看清是哪个机制），再缩小淡出 */
 .mech-resolving .mech-main {
-  animation: mech-resolve-main 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: mech-resolve-main 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 .mech-resolving.mech--moody .mech-main {
   animation-name: mech-resolve-cloud;
@@ -540,7 +614,7 @@ onMounted(() => {
 /* ---- breaking 破除动画（vine 断裂 / bubble 破碎） ---- */
 /* 主元素先放大强调，再碎裂消失 */
 .mech-breaking .mech-main {
-  animation: mech-break-main 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: mech-break-main 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 .mech-breaking.mech--vine .mech-main {
   animation-name: mech-break-vine;

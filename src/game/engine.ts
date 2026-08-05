@@ -222,6 +222,11 @@ export class GameEngine {
         const vt = next.tiles.find((t) => t.id === tileId)!
         vt.mechanicState!.stuck = 0
         if (next.clickRemaining > 0) next.clickRemaining -= 1
+        // 解除后若点击次数耗尽且未全部消除 → 判定失败
+        if (next.clickRemaining === 0 && !next.tiles.every((t) => t.removed)) {
+          next.status = 'lost'
+          next.endTime = Date.now()
+        }
         next.lastMechanicEvents = [{ kind: 'broken', tileId, type: ms.type as MechanicType }]
         next.lastResolvedMechanics = []
         return { state: next, matched: false, picked: false }
@@ -251,7 +256,7 @@ export class GameEngine {
     // hidden: 翻开后清除机制状态，记录 revealed 事件
     if (pt.mechanicState?.type === 'hidden') {
       delete pt.mechanicState
-      next.lastMechanicEvents.push({ kind: 'revealed', tileId })
+      next.lastMechanicEvents.push({ kind: 'revealed', tileId, type: 'hidden' })
     }
     pt.inSlot = true
     pt.slotIndex = slotIdx
@@ -325,6 +330,10 @@ export class GameEngine {
       next.status = 'won'
       next.endTime = Date.now()
     } else if (next.slots.every((s) => s.tile !== null)) {
+      next.status = 'lost'
+      next.endTime = Date.now()
+    } else if (next.clickRemaining === 0) {
+      // 点击次数耗尽且未全部消除 → 判定失败
       next.status = 'lost'
       next.endTime = Date.now()
     }

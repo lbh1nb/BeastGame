@@ -6,6 +6,7 @@
  * - 纯渲染层工具，通过 window.gameAPI.asset.resolve 解析资源路径
  */
 import type { AnimalType } from '@game/types'
+import { assetUrl } from './asset-url'
 
 /** 抠图容差：与角落背景色差值之和小于该值时视为背景 */
 const BG_TOLERANCE = 45
@@ -13,8 +14,8 @@ const BG_TOLERANCE = 45
 /** 抠图处理前先缩到的最大边长（px），大幅降低逐像素扫描开销 */
 const MAX_PROCESS_SIZE = 128
 
-/** 抠图结果缓存：key = `${animal}_${folder}` */
-const cache = new Map<string, HTMLCanvasElement | null>()
+/** 抠图结果缓存：key = `${animal}_${folder}`，值为 Promise（同 key 并发只处理一次，避免预加载与组件渲染重复处理导致卡顿） */
+const cache = new Map<string, Promise<HTMLCanvasElement | null>>()
 
 /**
  * 获取某动物的抠图结果（透明背景，已裁剪主体边界）
@@ -22,7 +23,7 @@ const cache = new Map<string, HTMLCanvasElement | null>()
  * @param hover 是否使用悬停动态图（active 文件夹）
  * @returns 抠图后的 canvas，失败返回 null
  */
-export async function getAnimalImage(
+export function getAnimalImage(
   animal: AnimalType,
   hover: boolean
 ): Promise<HTMLCanvasElement | null> {
@@ -30,13 +31,20 @@ export async function getAnimalImage(
   const fileName = hover ? `${animal}_active.jpg` : `${animal}.jpg`
   const key = `${animal}_${folder}`
 
-  if (cache.has(key)) return cache.get(key)!
+  const existing = cache.get(key)
+  if (existing) return existing
 
+  // 使用自定义协议 assets:// 加载，避免 file:// 在 fetch 时被 CORS 拦截
+  const url = assetUrl(`animals/${folder}/${fileName}`)
+  const p = loadAnimalImage(url)
+  cache.set(key, p)
+  return p
+}
+
+/** 实际加载并抠图（已按 key 去重，同一 url 只处理一次） */
+async function loadAnimalImage(url: string): Promise<HTMLCanvasElement | null> {
   let result: HTMLCanvasElement | null = null
   try {
-    const basePath = await window.gameAPI.asset.resolve('animals')
-    const url = 'file:///' + `${basePath}/${folder}/${fileName}`.replace(/\\/g, '/')
-
     // 用 createImageBitmap + resize 解码直接缩小，避免解码全尺寸（1920x1920）大图
     let img: ImageBitmap | HTMLImageElement
     let pw: number
@@ -121,7 +129,6 @@ export async function getAnimalImage(
     result = null
   }
 
-  cache.set(key, result)
   return result
 }
 

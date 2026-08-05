@@ -1,5 +1,5 @@
 import { Howl } from 'howler'
-import type { AnimalType } from '@game/types'
+import type { AnimalType, MechanicType } from '@game/types'
 import toneGenerator from './tone-generator'
 
 /** 音效管理器（单例）
@@ -370,6 +370,20 @@ class AudioManager {
       } catch {
         // 静默失败
       }
+    }
+  }
+
+  /**
+   * 播放机制解除音效（每种机制一个专属短音效）
+   * - 始终使用合成音效（toneGenerator），确保短促、贴合机制意象、不受倍速变调影响
+   * - 任何异常都静默处理，防止影响 UI
+   */
+  playMechanicSound(type: MechanicType): void {
+    if (this.sfxVolume <= 0) return
+    try {
+      toneGenerator.playMechanicSound(type)
+    } catch {
+      // 静默失败
     }
   }
 

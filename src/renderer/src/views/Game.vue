@@ -1,6 +1,6 @@
 <template>
   <div class="game">
-    <template v-if="engineState">
+    <template v-if="engineState && resourcesReady">
       <!-- 顶栏 HUD -->
       <GameHUD
         :score="engineState.score"
@@ -151,6 +151,7 @@ const gameStore = useGameStore()
 const userStore = useUserStore()
 
 const engineState = computed(() => gameStore.engineState)
+const resourcesReady = computed(() => gameStore.resourcesReady)
 
 /** 路由 query 中的 levelId（闯关模式） */
 const levelId = computed<number | undefined>(() => {

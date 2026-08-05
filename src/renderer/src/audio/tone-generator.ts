@@ -9,7 +9,7 @@
  *  - 新增按钮 hover/click 音效
  *  - 支持噪声生成（用于老虎/狮子/鳄鱼/章鱼等）
  */
-import type { AnimalType } from '@game/types'
+import type { AnimalType, MechanicType } from '@game/types'
 import type { SfxName, ComboTier, BgmName } from './manager'
 
 /** 单个音符定义 */
@@ -208,6 +208,25 @@ class ToneGenerator {
     if (seq) this.playSequence(seq)
   }
 
+  /**
+   * 播放机制解除音效（每种机制一个专属短音效，增强解除反馈）
+   * - moody 生气解除：柔和下滑音（乌云"呼~"散去）
+   * - vine 藤蔓破碎："咔嚓"断裂（短促高频阶梯 + 噪声）
+   * - sleepy 贪睡唤醒：柔和上行叮咚（星星一闪）
+   * - bubble 气泡破除："啵"爆破（快速上滑 + 噪声）
+   * - hidden 问号翻开：短促"咔哒"翻牌
+   */
+  playMechanicSound(type: MechanicType): void {
+    const ctx = this.ensureContext()
+    if (!ctx || !this.masterGain) return
+    if (this.volume <= 0) return
+    // 藤蔓/气泡加入短噪声增强"破碎/爆破"质感
+    if (type === 'vine') this.playNoiseSound(100, 3200, 0.05)
+    if (type === 'bubble') this.playNoiseSound(70, 2600, 0.04)
+    const seq = MECHANIC_SFX_SEQUENCES[type]
+    if (seq) this.playSequence(seq)
+  }
+
   playAnimalSound(animal: AnimalType): void {
     const seq = ANIMAL_SOUND_SEQUENCES[animal]
     if (!seq) return
@@ -393,6 +412,37 @@ const COMBO_PRAISE_SEQUENCES: Record<ComboTier, NoteSequence> = {
   amazing: SFX_SEQUENCES.combo_amazing,
   unbelievable: SFX_SEQUENCES.combo_unbelievable,
   godlike: SFX_SEQUENCES.combo_godlike
+}
+
+/**
+ * 机制解除音效（每种机制一个专属短音效，贴合机制意象）
+ * - moody 生气解除：柔和下滑音（乌云"呼~"散去）
+ * - vine 藤蔓破碎："咔嚓"断裂（短促高频阶梯下降）
+ * - sleepy 贪睡唤醒：柔和上行叮咚（星星一闪）
+ * - bubble 气泡破除："啵"爆破（快速上滑）
+ * - hidden 问号翻开：短促"咔哒"翻牌
+ */
+const MECHANIC_SFX_SEQUENCES: Record<MechanicType, NoteSequence> = {
+  moody: [
+    { freq: 500, duration: 120, type: 'sine', volume: 0.14, slideTo: 260 },
+    { freq: 260, duration: 220, type: 'sine', volume: 0.12, slideTo: 160 }
+  ],
+  vine: [
+    { freq: 2000, duration: 50, type: 'square', volume: 0.12, slideTo: 1500 },
+    { freq: 1600, duration: 70, type: 'square', volume: 0.1, slideTo: 1100 },
+    { freq: 900, duration: 90, type: 'square', volume: 0.1, slideTo: 600 }
+  ],
+  sleepy: [
+    { freq: 523, duration: 90, type: 'sine', volume: 0.14 },
+    { freq: 784, duration: 130, type: 'sine', volume: 0.14 }
+  ],
+  bubble: [
+    { freq: 300, duration: 60, type: 'sine', volume: 0.16, slideTo: 1400 }
+  ],
+  hidden: [
+    { freq: 800, duration: 70, type: 'square', volume: 0.12, slideTo: 500 },
+    { freq: 500, duration: 90, type: 'square', volume: 0.1, slideTo: 350 }
+  ]
 }
 
 /**

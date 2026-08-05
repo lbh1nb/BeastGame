@@ -40,16 +40,17 @@
 ### 3.2 最近完成的改动（机制动画系统）
 已为 5 种机制实现**完整动画**：
 - **idle**（机制存在时）：漂浮/摇摆/脉动
-- **resolving**（解除动画）：主元素**放大强调** + 漂走 + 粒子飞出
-- **breaking**（破除动画）：主元素破碎 + 粒子四散
-- **revealing**（翻牌动画）：CSS `rotateY` 翻转
+- **resolving**（解除动画）：`moody`/`sleepy` 用 **Seedance 解除视频**播放（`<video>` + `playbackRate=4`）
+- **breaking**（破除动画）：`vine`/`bubble` 用 **Seedance 破除视频**播放
+- **revealing**（翻牌动画）：`hidden` 保留 CSS `rotateY` 翻转
 - **rejected**（点击被拒）：shake 动画
-- 机制消失动画已加强**四重反馈**：主元素放大强调 + 爆发特效层 + 白色闪光 + 粒子爆发，能清楚看出是哪个机制动物被解除。
+- 视频不可用（缺失/加载失败）时自动回退到「静态图 + CSS 动画」，另含四重反馈（放大强调 + 爆发特效层 + 白色闪光 + 粒子爆发）。
 
 相关文件：
-- `src/renderer/src/components/game/Tile.vue`（动画渲染核心）
+- `src/renderer/src/components/game/Tile.vue`（动画渲染核心 + `<video>` 播放）
 - `src/renderer/src/stores/game.ts`（`MECHANIC_ANIM_DURATION`、`triggerMechanicAnim`）
 - `src/renderer/src/utils/mechanic-image.ts`（机制素材加载）
+- `src/renderer/src/utils/mechanic-video.ts`（机制解除视频加载/缓存/预加载）
 - `resources/mechanics/`（14 张 Seedream 生成的机制图 + 爆发特效图 + 粒子图，见下）
 
 ### 3.3 机制素材清单（`resources/mechanics/`）
@@ -58,6 +59,7 @@
 | moody_cloud.jpg / vine.jpg / sleepy_zzz.jpg / bubble.jpg / hidden_q.jpg | 5 种机制主图 |
 | burst_moody.jpg / burst_vine.jpg / burst_sleepy.jpg / burst_bubble.jpg / burst_hidden.jpg | 5 种爆发特效图 |
 | star.jpg / leaf_particle.jpg / droplet.jpg / cloud_piece.jpg | 4 种粒子图 |
+| videos/moody_resolve.mp4 / sleepy_resolve.mp4 / vine_resolve.mp4 / bubble_resolve.mp4 / hidden_resolve.mp4 | 5 个机制解除视频（Seedance 生成，hidden 未接入） |
 
 ---
 
@@ -71,7 +73,15 @@
 
 ### 4.2 待处理的 git 状态
 - 当前有**大量未提交改动**和**未跟踪文件**（见 `git status`），需要在合适时机 commit + push。
-- 未跟踪文件包括：`agent.md`、`resources/mechanics/`、`resources/animals/`、`scripts/`、`preview/`、部分地球贴图、`src/.../GameTitle.vue`、`animal-image.ts`、`mechanic-image.ts` 等。
+- 未跟踪文件包括：`agent.md`、`resources/mechanics/`、`resources/animals/`、`scripts/`、`preview/`、部分地球贴图、`src/.../GameTitle.vue`、`animal-image.ts`、`mechanic-image.ts`、`mechanic-video.ts` 等。
+
+### 4.3 机制解除视频集成（已完成 2026-08-05）
+- work 模式已生成 5 个机制解除视频（`resources/mechanics/videos/{mechanic}_resolve.mp4`），本会话已集成：
+  - `moody`/`sleepy`（resolving）与 `vine`/`bubble`（breaking）用 `<video>` 播放，`playbackRate=4` 加速到 ~1 秒。
+  - `hidden`（revealing）为翻牌语义，**保留 CSS 翻牌动画，不接入视频**。
+  - 修复了遮罩层在解除瞬间因 `stuck` 置 0 而隐藏、导致动画/视频无法显示的 bug。
+  - 动画时长 `MECHANIC_ANIM_DURATION` 的 resolving/breaking 调整为 1000ms，与视频时长对齐。
+- 新增文件：`src/renderer/src/utils/mechanic-video.ts`（视频加载/缓存/预加载）。
 
 ---
 
@@ -88,6 +98,7 @@
 | `src/renderer/src/components/game/PixelAnimal.vue` | 动物渲染 |
 | `src/renderer/src/utils/animal-image.ts` | 动物图加载（去背景/裁剪/缓存） |
 | `src/renderer/src/utils/mechanic-image.ts` | 机制素材加载 |
+| `src/renderer/src/utils/mechanic-video.ts` | 机制解除视频加载/缓存/预加载 |
 | `src/renderer/src/audio/manager.ts` | 音频管理 |
 | `src/renderer/src/audio/tone-generator.ts` | 音效合成 |
 | `resources/animals/` | 动物素材（static 牌面 / active 悬停） |
