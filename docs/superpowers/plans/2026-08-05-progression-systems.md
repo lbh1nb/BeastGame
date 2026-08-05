@@ -1,6 +1,6 @@
 # 成长系统实现计划（星级/道具/商店/收藏/挑战）
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 为「兽了个兽」新增星级判定、全员限时、4 种新道具、金币商店、56 件收藏品掉落与挑战模式，形成完整经济闭环。
 
@@ -73,7 +73,7 @@
 - Modify: `src/preload/index.ts`
 - Modify: `src/renderer/src/types/global.d.ts`
 
-- [ ] **Step 1: schema.sql 追加两张表**
+- [x] **Step 1: schema.sql 追加两张表**
 
 ```sql
 -- 玩家库存（金币 + 新道具数量）
@@ -91,11 +91,11 @@ CREATE TABLE IF NOT EXISTS collection (
 );
 ```
 
-- [ ] **Step 2: db/index.ts 建表（含迁移）**
+- [x] **Step 2: db/index.ts 建表（含迁移）**
 
 在 `initDB` 的 `dbWrapper.exec(...)` 块中追加两张新表（isNewDb 与已有库都执行）。把建表语句提取为常量 `CREATE_TABLES_SQL`，在 isNewDb 时执行一次，非 isNewDb 时也执行 `CREATE TABLE IF NOT EXISTS` 确保旧库补齐新表。
 
-- [ ] **Step 3: repository.ts 增加 inventory/collection 仓储**
+- [x] **Step 3: repository.ts 增加 inventory/collection 仓储**
 
 ```ts
 // 库存
@@ -108,16 +108,16 @@ export function getAllCollection(): any[]
 export function getCollectionCount(): number  // 已收集(obtained=1)数量
 ```
 
-- [ ] **Step 4: 新建 inventory.ts / collection.ts IPC**
+- [x] **Step 4: 新建 inventory.ts / collection.ts IPC**
 
 `inventory:getAll` / `inventory:add` / `collection:getAll` / `collection:record` / `collection:count`。在 `main/index.ts` 注册，`preload/index.ts` 暴露到 `gameAPI.inventory` 与 `gameAPI.collection`，`global.d.ts` 补类型。
 
-- [ ] **Step 5: 验证**
+- [x] **Step 5: 验证**
 
 Run: `npm run typecheck`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/main src/preload src/renderer/src/types
@@ -130,7 +130,7 @@ git commit -m "feat: 新增库存与收藏品数据表及 IPC"
 - Create: `src/game/stars.ts`
 - Modify: `src/game/types.ts`（可选，加 StarResult 类型）
 
-- [ ] **Step 1: 编写 stars.ts**
+- [x] **Step 1: 编写 stars.ts**
 
 ```ts
 export interface StarInput {
@@ -154,11 +154,11 @@ export function calcStars(input: StarInput): number
 - 因 `BASE + 0.2 + 0.2 + 0.2 = 1.0`，`starScore ≤ fScore`，分数不满则最高 2 星。
 - 映射：`>=0.85 → 3`，`>=0.6 → 2`，`>=0.3 → 1`，否则 0。
 
-- [ ] **Step 2: 补充 cmd 验证脚本（放 scripts/ 临时，验证后删除）**
+- [x] **Step 2: 补充 cmd 验证脚本（放 scripts/ 临时，验证后删除）**
 
 用 10 组用例断言（用例见"验证预期"），`node -r esbuild-register` 或直接用 `npx tsx` 运行。若环境无 tsx 则用 `npx tsc` 编译后 node 运行。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/game/stars.ts
@@ -172,24 +172,24 @@ git commit -m "feat: 新增多维星级判定"
 - Modify: `src/game/engine.ts`
 - Modify: `src/game/types.ts`
 
-- [ ] **Step 1: levels.config.ts 每关配置 timeLimit**
+- [x] **Step 1: levels.config.ts 每关配置 timeLimit**
 
 在 `buildLevelsFromSeed` 中，依据关卡序号 `i`（0=L1…4=L5）设置 `timeLimit`：`[540, 510, 480, 450, 420][i]`（L1≈9分钟，Boss≈7分钟，依序递减）。对所有章统一。移除仅 boss 的 `BOSS_TIME_LIMIT` 特殊逻辑（保留常量名或删除）。
 
-- [ ] **Step 2: types.ts 补充超时字段**
+- [x] **Step 2: types.ts 补充超时字段**
 
 `GameState` 增加 `timeLeft?: number`（当前剩余秒数，由外层驱动递减）。
 
-- [ ] **Step 3: engine.ts 超时判负**
+- [x] **Step 3: engine.ts 超时判负**
 
 新增 `static timeout(state): GameState`：若 `config.timeLimit` 存在且未通关，置 `status='lost'`、`endTime=now`。返回克隆 state。
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 Run: `npm run typecheck`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/game/levels.config.ts src/game/engine.ts src/game/types.ts
@@ -203,24 +203,24 @@ git commit -m "feat: 闯关全员限时并支持超时判负"
 - Modify: `src/renderer/src/components/game/GameHUD.vue`
 - Modify: `src/renderer/src/views/Game.vue`
 
-- [ ] **Step 1: game.ts 增加倒计时驱动**
+- [x] **Step 1: game.ts 增加倒计时驱动**
 
 `startGame` 后若 `config.timeLimit` 存在，设定时器每秒递减 `engineState.timeLeft`；归零调用 `GameEngine.timeout` 并 `applyState` + `endGame()`。`exitToHome`/`restart` 清理定时器。
 
-- [ ] **Step 2: GameHUD 增加倒计时显示**
+- [x] **Step 2: GameHUD 增加倒计时显示**
 
 新增 prop `timeLeft?: number`、`timeLimit?: number`。剩余 ≤30s 变红闪烁（复用 clicks-pulse 动画模式）。
 
-- [ ] **Step 3: Game.vue 传参**
+- [x] **Step 3: Game.vue 传参**
 
 向 `<GameHUD>` 传 `:time-left="engineState.timeLeft"` `:time-limit="engineState.config?.timeLimit"`。
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 Run: `npm run typecheck` → `npm run build:win`
 Expected: PASS，运行 exe 看到倒计时，超时弹出"游戏失败"
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer
@@ -238,7 +238,7 @@ git commit -m "feat: 渲染层倒计时与超时结算"
 - Modify: `src/game/engine.ts`
 - Create: `src/game/props.config.ts`
 
-- [ ] **Step 1: types.ts 扩展 GameProps**
+- [x] **Step 1: types.ts 扩展 GameProps**
 
 ```ts
 export interface GameProps {
@@ -249,7 +249,7 @@ export interface GameProps {
 
 `GameMode` 增加 `'challenge'`。
 
-- [ ] **Step 2: props.config.ts**
+- [x] **Step 2: props.config.ts**
 
 ```ts
 export const NEW_PROP_PRICES = { chisel: 120, clearProp: 100, pair: 180, slot: 150 } as const
@@ -259,7 +259,7 @@ export const NEW_PROP_NAMES: Record<PropType, string> = {
 }
 ```
 
-- [ ] **Step 3: engine.ts 新增 4 个操作**
+- [x] **Step 3: engine.ts 新增 4 个操作**
 
 - `useChisel(state, tileId)`：校验库存>0，标记该 tile `removed`（`inSlot=false`），减库存，不记 history。
 - `useClearProp(state)`：校验>0，槽位所有牌 `inSlot=false`、清除 slot.tile，减库存。
@@ -268,12 +268,12 @@ export const NEW_PROP_NAMES: Record<PropType, string> = {
 
 `DEFAULT_PROPS` 全部初始为 0；`GameState.props` 克隆需含新字段。
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 Run: `npm run typecheck`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/game
@@ -287,24 +287,24 @@ git commit -m "feat: 引擎新增4种新道具操作"
 - Modify: `src/renderer/src/components/game/PropBar.vue`
 - Modify: `src/renderer/src/views/Game.vue`
 
-- [ ] **Step 1: game.ts 增加 useProp 转发**
+- [x] **Step 1: game.ts 增加 useProp 转发**
 
 `useChisel/useClear/usePair/useSlot` 调用引擎对应方法并 `applyState`。维护 `pendingProp`（当前待选目标道具，如 chisel/pair 需选牌）。
 
-- [ ] **Step 2: PropBar 增加 4 个按钮**
+- [x] **Step 2: PropBar 增加 4 个按钮**
 
 显示新道具库存与徽章；点击触发 `emit('chisel')` 等。数量 0 禁用。
 
-- [ ] **Step 3: Game.vue 选择态**
+- [x] **Step 3: Game.vue 选择态**
 
 `pendingProp==='chisel'` 时点击牌调 `useChisel(tileId)`；pair 自动执行。清空/扩容即时执行。
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 Run: `npm run typecheck` → `npm run build:win`
 Expected: PASS，新道具按钮可用（库存需先充值）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer
@@ -323,24 +323,24 @@ git commit -m "feat: 新道具视图与选择态"
 - Modify: `src/renderer/src/router/index.ts`
 - Modify: `src/renderer/src/views/Home.vue`
 
-- [ ] **Step 1: inventory Store**
+- [x] **Step 1: inventory Store**
 
 持有 `coin`、`props` 各数量；`load()`（getAllInventory）、`buy(prop)`（校验金币、扣金币加道具）、`spendCoin(n)`。
 
-- [ ] **Step 2: Shop.vue**
+- [x] **Step 2: Shop.vue**
 
 展示金币余额 + 4 种新道具商品卡（图标/名称/价格/购买按钮）。金币不足置灰。
 
-- [ ] **Step 3: 路由 + Home 入口**
+- [x] **Step 3: 路由 + Home 入口**
 
 路由加 `/shop`；Home 底部加「🛒 商店」按钮。
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 Run: `npm run typecheck` → `npm run build:win`
 Expected: PASS，可进入商店购买道具
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer
@@ -357,23 +357,23 @@ git commit -m "feat: 金币商店系统"
 - Create: `src/game/challenge.ts`（含掉落函数，或独立 `src/game/collection.ts`）
 - Modify: `src/renderer/src/stores/game.ts`
 
-- [ ] **Step 1: 掉落函数**
+- [x] **Step 1: 掉落函数**
 
 ```ts
 export function rollCollection(chapterAnimals: AnimalType[], stars: number): { id: string; rarity: string }
 ```
 按星级概率抽稀有度，从 chapterAnimals 中随机选一只动物作为 id。概率表（普通/稀有/史诗/传说）：1星 90/9/1/0，2星 60/30/9/1，3星 30/40/25/5。
 
-- [ ] **Step 2: 结算接入**
+- [x] **Step 2: 结算接入**
 
 `endGame` 中若 `result==='win'` 且 mode 为 level/challenge：算星级 → 调 `rollCollection` → `recordCollection`；返回 `new/duplicate`。duplicate 时 `addInventory('coin', 稀有度金币)`。结算弹窗展示获得的收藏品与星级。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 Run: `npm run typecheck` → `npm run build:win`
 Expected: PASS，通关后掉落收藏品并转金币
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/game src/renderer/src/stores
@@ -388,24 +388,24 @@ git commit -m "feat: 收藏品掉落与星际结算"
 - Modify: `src/renderer/src/router/index.ts`
 - Modify: `src/renderer/src/views/Home.vue`
 
-- [ ] **Step 1: collection Store**
+- [x] **Step 1: collection Store**
 
 `items`（getAllCollection）、`count`（getCollectionCount）、`load()`。
 
-- [ ] **Step 2: Collection.vue**
+- [x] **Step 2: Collection.vue**
 
 按章分组展示 56 件；已收集（obtained=1）显示动物形象（复用 PixelAnimal），未收集显示剪影；顶部展示集齐进度 `count/56`；稀有度角标配色。
 
-- [ ] **Step 3: 路由 + Home 入口**
+- [x] **Step 3: 路由 + Home 入口**
 
 路由加 `/collection`；Home 加「🎨 收藏册」按钮。
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 Run: `npm run typecheck` → `npm run build:win`
 Expected: PASS，收藏册展示与进度统计
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer
@@ -423,20 +423,20 @@ git commit -m "feat: 收藏册视图"
 - Modify: `src/game/engine.ts`
 - Modify: `src/game/types.ts`
 
-- [ ] **Step 1: challenge.ts 生成随机 LevelConfig**
+- [x] **Step 1: challenge.ts 生成随机 LevelConfig**
 
 `generateChallengeConfig(): LevelConfig`：随机选一章动物（子集 6-8 种）、随机 1-2 种机制（前 5 章）、`timeLimit` 取 240s（比闯关短）、`mode='challenge'`、`id=0`、`isBoss=false`。
 
-- [ ] **Step 2: 引擎支持 challenge
+- [x] **Step 2: 引擎支持 challenge
 
 `makeDefaultConfig`/`init` 增加 challenge 分支，用 `generateChallengeConfig()`。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 Run: `npm run typecheck`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/game
@@ -451,20 +451,20 @@ git commit -m "feat: 挑战模式随机配置"
 - Create: `src/renderer/src/views/Challenge.vue`
 - Modify: `src/renderer/src/stores/game.ts`
 
-- [ ] **Step 1: Home 按钮 + 路由**
+- [x] **Step 1: Home 按钮 + 路由**
 
 路由加 `/challenge`；Home 加「⚡ 挑战」按钮。
 
-- [ ] **Step 2: Challenge.vue**
+- [x] **Step 2: Challenge.vue**
 
 进入扣 100 金币（库存不足提示）；调 `startGame('challenge')`。结算复用 Game 弹窗逻辑，通关返 100 金币 + 掉落收藏品 + 额外道具；失败不返。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 Run: `npm run typecheck` → `npm run build:win`
 Expected: PASS，挑战模式可玩、门票与奖励正确
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/renderer src/game

@@ -390,6 +390,28 @@ flowchart TD
 3. 若是 `match`：取消消除（`removed=false`），还原槽位快照，恢复分数/连击
 4. 删除该 history 条目，消耗1个撤回道具
 
+### 金币经济闭环（星级/商店/收藏/挑战）
+
+```mermaid
+flowchart LR
+    A[闯关通关] -->|星级| B[收藏品掉落]
+    C[挑战通关] -->|返门票+奖励| B
+    B -->|新收藏品| D[收藏册]
+    B -->|重复品转金币| E[(金币)]
+    A -->|通关金币| E
+    C -->|通关金币| E
+    E -->|购买| F[商店]
+    F -->|4种新道具| G[闯关/挑战使用]
+    C -->|消耗100金币门票| A
+```
+
+- **4 种金币新道具**：拆牌锤 `chisel`（移除1张可点击牌）、槽位清空 `clearProp`（槽位牌回牌堆）、一键配对 `pair`（消除一对同动物）、临时扩容 `slot`（+1卡槽）。**不进入** history 撤回序列，仅在闯关/挑战模式可用。
+- 新道具库存持久化于 `player_inventory` 表；对局开始注入引擎 `props`，使用时同步扣减持久库存。
+- **多维星级**：`src/game/stars.ts` 的 `calcStars` 由分数主导乘数式计算（`score×tileCount×12` 归一化，`0.85/0.6/0.3 → 3/2/1 星`），`updateLevelProgress` 与收藏掉落共用同一星级。
+- **收藏品**：`src/game/collection.ts` 的 `rollCollection` 按星级概率抽稀有度，从当前章动物中随机选一只；重复品自动转金币（普通80/稀有200/史诗400/传说800）。
+- **挑战模式**：`src/game/challenge.ts` 的 `generateChallengeConfig` 随机生成动物+机制+限时的 LevelConfig；`mode='challenge'`，金币门票 100，通关返门票。
+- **全员限时**：闯关每关 `timeLimit`（L1=540s … L5/Boss=420s），引擎 `timeout` 超时判负；渲染层每秒递减 `timeLeft` 驱动倒计时。
+
 ---
 
 ## 八、渲染层组件架构
@@ -402,6 +424,9 @@ flowchart TD
     Router --> Levels["Levels.vue<br/>选关页"]
     Router --> Settings["Settings.vue<br/>设置页"]
     Router --> Records["Records.vue<br/>记录页"]
+    Router --> Shop["Shop.vue<br/>商店"]
+    Router --> Collection["Collection.vue<br/>收藏册"]
+    Router --> Challenge["Challenge.vue<br/>挑战"]
 
     Game --> HUD["GameHUD.vue<br/>分数/连击/时长"]
     Game --> Stack["TileStack.vue<br/>牌堆区"]
@@ -418,6 +443,8 @@ flowchart TD
     Game -.->|state| StoreGame["gameStore"]
     Levels -.->|state| StoreUser["userStore"]
     Settings -.->|state| StoreSet["settingsStore"]
+    Shop -.->|coin/props| StoreInv["inventoryStore"]
+    Collection -.->|items| StoreCol["collectionStore"]
 
     StoreGame --> Engine["GameEngine<br/>@game/engine"]
     StoreGame --> Audio["AudioManager<br/>@audio/manager"]
@@ -596,6 +623,11 @@ if (isPackaged) {
 | 16 | 资源目录 + 说明文件 | ✅ |
 | 17 | 全项目复盘 + bug修复 | ✅ |
 | 18 | README + ARCHITECTURE 文档 | ✅ |
+| 19 | 多维星级判定 + 全员限时 | ✅ |
+| 20 | 4 种金币新道具 + 引擎操作 | ✅ |
+| 21 | 金币商店 + 库存 Store | ✅ |
+| 22 | 收藏品掉落 + 收藏册 | ✅ |
+| 23 | 挑战模式（门票 + 随机配置 + 结算） | ✅ |
 
 ---
 
