@@ -95,6 +95,20 @@
           <div class="result-row"><span>用时</span><b>{{ formatTime(elapsed) }}</b></div>
           <div class="result-row"><span>消除图案</span><b>{{ engineState.tilesRemoved }}</b></div>
         </div>
+        <!-- 通关：收藏品掉落 -->
+        <div v-if="gameStore.isWon && gameStore.lastCollection" class="collection-drop">
+          <div class="collection-drop-title">🎁 获得收藏品</div>
+          <div class="collection-card">
+            <span class="collection-animal">{{ animalName(gameStore.lastCollection.id) }}</span>
+            <span class="collection-rarity" :class="'rarity-' + gameStore.lastCollection.rarity">
+              {{ RARITY_NAME[gameStore.lastCollection.rarity] }}
+            </span>
+            <span v-if="gameStore.lastCollection.isNew" class="collection-tag new">✨ 新收藏！</span>
+            <span v-else class="collection-tag dup">
+              重复收藏，+{{ RARITY_GOLD[gameStore.lastCollection.rarity] }}金币
+            </span>
+          </div>
+        </div>
         <!-- 闯关模式：上下关导航 -->
         <div v-if="props.mode === 'level'" class="level-nav">
           <button
@@ -145,6 +159,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '@stores/game'
 import { useUserStore } from '@stores/user'
 import { getLevelById, CHAPTERS, getChapterMechanic } from '@game/levels.config'
+import { RARITY_NAME, RARITY_GOLD } from '@game/collection'
+import { ANIMAL_NAMES } from '@utils/pixel-animal'
 import type { GameMode, AnimalType } from '@game/types'
 import GameHUD from '@components/game/GameHUD.vue'
 import GameTitle from '@components/game/GameTitle.vue'
@@ -344,6 +360,11 @@ function formatTime(sec: number): string {
   const s = (sec % 60).toString().padStart(2, '0')
   return `${m}:${s}`
 }
+
+/** 收藏品动物中文名（缺映射时回退为 id） */
+function animalName(id: string): string {
+  return ANIMAL_NAMES[id as keyof typeof ANIMAL_NAMES] ?? id
+}
 </script>
 
 <style scoped>
@@ -442,6 +463,59 @@ function formatTime(sec: number): string {
   color: var(--color-primary);
   margin-bottom: 4px;
 }
+
+/* 收藏品掉落 */
+.collection-drop {
+  margin: 10px 0 4px;
+  text-align: center;
+}
+
+.collection-drop-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.collection-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #fff8e6, #fff0d0);
+  border: 2px solid #f0d59a;
+  border-radius: var(--radius-lg);
+  padding: 10px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.collection-animal {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.collection-rarity {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+}
+
+.rarity-common { background: #9e9e9e; }
+.rarity-rare { background: #42a5f5; }
+.rarity-epic { background: #ab47bc; }
+.rarity-legendary { background: linear-gradient(135deg, #ffb300, #ff6d00); }
+
+.collection-tag {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.collection-tag.new { color: #2e7d32; }
+.collection-tag.dup { color: #b26a00; }
 
 .result-row {
   display: flex;

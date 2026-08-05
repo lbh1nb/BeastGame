@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { GameEngine, makeDefaultConfig } from '@game/engine'
-import { getLevelById } from '@game/levels.config'
+import { getLevelById, CHAPTERS } from '@game/levels.config'
+import { calcStars as calcStarsMulti } from '@game/stars'
+import { rollCollection, RARITY_GOLD, type Rarity } from '@game/collection'
 import type { GameMode, GameState, LevelConfig, AnimalType, MechanicType } from '@game/types'
 import { preloadAnimalImages } from '@utils/animal-image'
 import { preloadMechanicImages } from '@utils/mechanic-image'
@@ -54,6 +56,8 @@ export const useGameStore = defineStore('game', () => {
   const finalScore = ref(0)
   /** 本局是否已结算，防止 endGame 重复执行 */
   const hasEnded = ref(false)
+  /** 本局获得的收藏品（通关/挑战掉落，局终弹窗展示用） */
+  const lastCollection = ref<{ id: string; rarity: Rarity; isNew: boolean } | null>(null)
   /** 倒计时定时器（闯关限时用） */
   let countdownTimer: number | undefined
 
@@ -116,6 +120,7 @@ export const useGameStore = defineStore('game', () => {
     clearCountdown()
     hasEnded.value = false
     finalScore.value = 0
+    lastCollection.value = null
     selectedLevelId.value = levelId ?? null
     resourcesReady.value = false
     pendingProp.value = null
@@ -422,6 +427,11 @@ export const useGameStore = defineStore('game', () => {
       console.warn('[game] 道具奖励发放失败', e)
     }
 
+    // 收藏品掉落（仅闯关/挑战通关）：按星际概率掉收藏品，重复则转金币
+    if (result === 'win' && (s.mode === 'level' || s.mode === 'challenge')) {
+      await handleCollectionDrop(s, score)
+    }
+
     // 刷新用户数据（最高分/进度/成就）
     const userStore = useUserStore()
     await userStore.refreshAll()
@@ -663,6 +673,37 @@ export const useGameStore = defineStore('game', () => {
     return 1
   }
 
+  /**
+   * 收藏品掉落结算
+   * 多维星级 → rollCollection 抽稀有度+动物 → record 收藏 → 重复则转金币。
+   * 结果写入 lastCollection 供局终弹窗展示；任何异常仅告警，不影响通关结算。
+   */
+  async function handleCollectionDrop(s: GameState, score: number): Promise<void> {
+    lastCollection.value = null
+    try {
+      const stars = calcStarsMulti({
+        score,
+        timeLeft: s.timeLeft ?? 0,
+        propsUsed: s.propsUsed.undo + s.propsUsed.shuffle + s.propsUsed.hint,
+        clickLeft: s.clickRemaining,
+        timeLimit: s.config.timeLimit ?? 0,
+        tileCount: s.config.tiles,
+        maxSlots: s.config.maxSlots
+      })
+      const chapter = CHAPTERS.find((c) => c.id === s.config.chapter)
+      const chapterAnimals = chapter?.animals ?? []
+      const { id, rarity } = rollCollection(chapterAnimals, stars)
+      const isNew = (await window.gameAPI.collection.record(id, rarity)) === 'new'
+      if (!isNew) {
+        await window.gameAPI.inventory.add('coin', RARITY_GOLD[rarity])
+      }
+      lastCollection.value = { id, rarity, isNew }
+    } catch (e) {
+      console.warn('[game] 收藏品掉落失败', e)
+      lastCollection.value = null
+    }
+  }
+
   return {
     engineState,
     pendingProp,
@@ -671,6 +712,7 @@ export const useGameStore = defineStore('game', () => {
     soundEnabled,
     finalScore,
     hasEnded,
+    lastCollection,
     comboPraise,
     pickedFlashIds,
     mechanicAnims,
