@@ -32,7 +32,7 @@ import {
 import { getLevelById } from './levels.config'
 
 /** 初始道具数量 */
-const DEFAULT_PROPS: GameProps = { undo: 3, shuffle: 2, hint: 3 }
+const DEFAULT_PROPS: GameProps = { undo: 3, shuffle: 2, hint: 3, chisel: 0, clearProp: 0, pair: 0, slot: 0 }
 
 /** Fisher-Yates 洗牌 */
 function shuffleArray<T>(arr: T[]): T[] {
@@ -428,6 +428,82 @@ export class GameEngine {
     next.hintTileIds = hint
     next.props.hint -= 1
     next.propsUsed.hint += 1
+    return next
+  }
+
+  /**
+   * 拆牌锤：直接移除场上指定牌（含藤蔓/气泡等机制牌），不记 history。
+   */
+  static useChisel(state: GameState, tileId: number): GameState {
+    if (state.props.chisel <= 0) return state
+    const tile = state.tiles.find((t) => t.id === tileId)
+    if (!tile || tile.removed || tile.inSlot) return state
+    const next = cloneState(state)
+    const t = next.tiles.find((x) => x.id === tileId)!
+    t.removed = true
+    t.inSlot = false
+    t.slotIndex = -1
+    delete t.mechanicState
+    next.props.chisel -= 1
+    next.lastMechanicEvents = []
+    next.hintTileIds = []
+    return next
+  }
+
+  /**
+   * 槽位清空：把槽位所有牌放回牌堆（inSlot=false），不 demo 消除。
+   */
+  static useClearProp(state: GameState): GameState {
+    if (state.props.clearProp <= 0) return state
+    const next = cloneState(state)
+    for (const s of next.slots) {
+      if (s.tile) {
+        s.tile.inSlot = false
+        s.tile.slotIndex = -1
+        s.tile = null
+      }
+    }
+    next.props.clearProp -= 1
+    next.lastMechanicEvents = []
+    next.hintTileIds = []
+    return next
+  }
+
+  /**
+   * 一键配对：找一对可点击且同动物的牌直接移除（消除），不记 history。
+   * 复用 matcher 的 findHint（返回一对可点击同动物 tile id）。
+   */
+  static usePair(state: GameState): GameState {
+    if (state.props.pair <= 0) return state
+    const pair = findHint(state)
+    if (!pair || pair.length < 2) return state
+    const next = cloneState(state)
+    for (const id of pair.slice(0, 2)) {
+      const t = next.tiles.find((x) => x.id === id)
+      if (t) {
+        t.removed = true
+        t.inSlot = false
+        t.slotIndex = -1
+        delete t.mechanicState
+      }
+    }
+    next.props.pair -= 1
+    next.lastMechanicEvents = []
+    next.hintTileIds = []
+    return next
+  }
+
+  /**
+   * 临时扩容：卡槽 +1。
+   */
+  static useSlot(state: GameState): GameState {
+    if (state.props.slot <= 0) return state
+    const next = cloneState(state)
+    next.maxSlots += 1
+    next.slots.push({ index: next.slots.length, tile: null })
+    next.props.slot -= 1
+    next.lastMechanicEvents = []
+    next.hintTileIds = []
     return next
   }
 

@@ -33,13 +33,13 @@ export type AnimalType =
   | 'flamingo' | 'ostrich'
 
 /** 游戏模式：3消 / 4消 / 闯关 */
-export type GameMode = 'classic3' | 'classic4' | 'level'
+export type GameMode = 'classic3' | 'classic4' | 'level' | 'challenge'
 
 /** 游戏状态 */
 export type GameStatus = 'playing' | 'won' | 'lost'
 
 /** 道具类型：撤回 / 洗牌 / 提示 */
-export type PropType = 'undo' | 'shuffle' | 'hint'
+export type PropType = 'undo' | 'shuffle' | 'hint' | 'chisel' | 'clearProp' | 'pair' | 'slot'
 
 /** 章节机制类型 */
 export type MechanicType = 'moody' | 'vine' | 'sleepy' | 'hidden' | 'bubble'
@@ -99,6 +99,10 @@ export interface GameProps {
   undo: number
   shuffle: number
   hint: number
+  chisel: number
+  clearProp: number
+  pair: number
+  slot: number
 }
 
 /** 单个区域的布局配置 */
