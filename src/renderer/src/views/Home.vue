@@ -50,6 +50,7 @@
     <div class="footer">
       <BaseButton size="md" type="ghost" @click="go('/settings')">⚙️ 设置</BaseButton>
       <BaseButton size="md" type="ghost" @click="go('/records')">🏆 记录</BaseButton>
+      <BaseButton size="md" type="ghost" @click="go('/challenge')">⚡ 挑战</BaseButton>
       <BaseButton size="md" type="ghost" @click="go('/shop')">🛒 商店</BaseButton>
       <BaseButton size="md" type="ghost" @click="go('/collection')">🎨 收藏册</BaseButton>
     </div>

@@ -13,6 +13,7 @@ import audioManager, {
   type ComboTier
 } from '@audio/manager'
 import { useUserStore } from './user'
+import type { ShopProp } from './inventory'
 
 /** 机制动画状态（播放中的一次性动画） */
 export interface MechanicAnimState {
@@ -433,6 +434,18 @@ export const useGameStore = defineStore('game', () => {
     // 收藏品掉落（仅闯关/挑战通关）：按星际概率掉收藏品，重复则转金币
     if (result === 'win' && (s.mode === 'level' || s.mode === 'challenge')) {
       await handleCollectionDrop(s, score)
+    }
+
+    // 挑战模式通关结算：返还门票 100 金币 + 额外 1 个随机新道具；失败不返还
+    if (result === 'win' && s.mode === 'challenge') {
+      try {
+        await window.gameAPI.inventory.add('coin', 100)
+        const extraProps: ShopProp[] = ['chisel', 'clearProp', 'pair', 'slot']
+        const pick = extraProps[Math.floor(Math.random() * extraProps.length)]
+        await window.gameAPI.inventory.add(pick, 1)
+      } catch (e) {
+        console.warn('[game] 挑战通关奖励发放失败', e)
+      }
     }
 
     // 刷新用户数据（最高分/进度/成就）
