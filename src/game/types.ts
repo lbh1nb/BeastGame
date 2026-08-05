@@ -160,7 +160,15 @@ export interface GameState {
   /** 当前剩余时间（秒），由外层驱动递减；无 timeLimit 时为 undefined */
   timeLeft?: number
   props: GameProps
-  propsUsed: { undo: number; shuffle: number; hint: number }
+  propsUsed: {
+    undo: number
+    shuffle: number
+    hint: number
+    chisel: number
+    clearProp: number
+    pair: number
+    slot: number
+  }
   history: HistoryEntry[]
   status: GameStatus
   hintTileIds: number[]       // 提示高亮的 tile id

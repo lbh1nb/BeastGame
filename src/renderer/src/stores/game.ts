@@ -13,7 +13,7 @@ import audioManager, {
   type ComboTier
 } from '@audio/manager'
 import { useUserStore } from './user'
-import type { ShopProp } from './inventory'
+import { useInventoryStore, type ShopProp } from './inventory'
 
 /** 机制动画状态（播放中的一次性动画） */
 export interface MechanicAnimState {
@@ -139,6 +139,27 @@ export const useGameStore = defineStore('game', () => {
 
       // 立即初始化引擎（布局/绘图计算不依赖图片），但牌堆渲染由 resourcesReady 控制
       engineState.value = GameEngine.init(mode, levelConfig)
+
+      // 注入库存新道具到引擎状态，商店购买的道具方可使用
+      try {
+        const inventory = useInventoryStore()
+        await inventory.load()
+        const s = engineState.value
+        if (s) {
+          engineState.value = {
+            ...s,
+            props: {
+              ...s.props,
+              chisel: inventory.props.chisel,
+              clearProp: inventory.props.clearProp,
+              pair: inventory.props.pair,
+              slot: inventory.props.slot
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[game] 注入库存道具失败', e)
+      }
 
       // 预加载本局用到的动物与机制图片（Promise 缓存去重后很快），就绪后再关闭"加载中"界面，
       // 确保牌面图片已就绪、无空白、无逐张补绘卡顿。
@@ -305,12 +326,16 @@ export const useGameStore = defineStore('game', () => {
     }
     try {
       const next = GameEngine.useChisel(s, tileId)
-      // 无效牌（已移除/槽内）时引擎返回原 state 引用，保持选择态让玩家重选
+      // 无效牌（已移除/槽内/不可点击）时引擎返回原 state 引用，保持选择态让玩家重选
       if (next === s) return
       pendingProp.value = null
       applyState(next)
-      // 拆掉场上最后一张牌时触发胜利结算（引擎只置 removed，不重算 status）
-      if (next.tiles.every((t) => t.removed)) {
+      // 同步扣减持久库存中的拆牌锤
+      await useInventoryStore().consumeProp('chisel').catch((e) => {
+        console.warn('[game] 扣减拆牌锤库存失败', e)
+      })
+      // 引擎已判定胜负：拆掉最后一张牌会置 won
+      if (next.status !== 'playing') {
         await endGame()
         return
       }
@@ -328,6 +353,10 @@ export const useGameStore = defineStore('game', () => {
     try {
       const next = GameEngine.useClearProp(s)
       applyState(next)
+      // 同步扣减持久库存中的槽位清空道具
+      await useInventoryStore().consumeProp('clearProp').catch((e) => {
+        console.warn('[game] 扣减槽位清空库存失败', e)
+      })
       if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
     } catch (e) {
       console.error('[game] 槽位清空失败', e)
@@ -341,9 +370,15 @@ export const useGameStore = defineStore('game', () => {
     if (!s || s.status !== 'playing' || s.props.pair <= 0) return
     try {
       const next = GameEngine.usePair(s)
+      // 找不到可配对的组合时引擎返回原 state 引用，不消耗道具
+      if (next === s) return
       applyState(next)
-      // 一键配对消除最后两张牌时触发胜利结算（引擎只置 removed，不重算 status）
-      if (next.tiles.every((t) => t.removed)) {
+      // 同步扣减持久库存中的一键配对道具
+      await useInventoryStore().consumeProp('pair').catch((e) => {
+        console.warn('[game] 扣减一键配对库存失败', e)
+      })
+      // 引擎已判定胜负：一键配对消除最后两张牌会置 won
+      if (next.status !== 'playing') {
         await endGame()
         return
       }
@@ -361,6 +396,10 @@ export const useGameStore = defineStore('game', () => {
     try {
       const next = GameEngine.useSlot(s)
       applyState(next)
+      // 同步扣减持久库存中的临时扩容道具
+      await useInventoryStore().consumeProp('slot').catch((e) => {
+        console.warn('[game] 扣减临时扩容库存失败', e)
+      })
       if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
     } catch (e) {
       console.error('[game] 临时扩容失败', e)
@@ -418,7 +457,7 @@ export const useGameStore = defineStore('game', () => {
 
     // 闯关进度与成就
     if (s.mode === 'level' && s.levelId != null && result === 'win') {
-      await updateLevelProgress(s.levelId, score, duration)
+      await updateLevelProgress(s, score, duration)
     }
     await unlockAchievements(s, score, result)
 
@@ -433,7 +472,7 @@ export const useGameStore = defineStore('game', () => {
 
     // 收藏品掉落（仅闯关/挑战通关）：按星际概率掉收藏品，重复则转金币
     if (result === 'win' && (s.mode === 'level' || s.mode === 'challenge')) {
-      await handleCollectionDrop(s, score)
+      await handleCollectionDrop(s)
     }
 
     // 挑战模式通关结算：返还门票 100 金币 + 额外 1 个随机新道具；失败不返还
@@ -607,8 +646,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** 更新关卡进度并解锁下一关 */
-  async function updateLevelProgress(levelId: number, score: number, duration: number): Promise<void> {
-    const stars = calcStars(score)
+  async function updateLevelProgress(s: GameState, score: number, duration: number): Promise<void> {
+    if (s.levelId == null) return
+    const levelId = s.levelId
+    const stars = computeStars(s)
     try {
       const prev = await window.gameAPI.progress.get(levelId)
       const prevScore = prev?.best_score ?? 0
@@ -683,11 +724,19 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** 根据分数估算星级（1-3） */
-  function calcStars(score: number): number {
-    if (score >= 1200) return 3
-    if (score >= 600) return 2
-    return 1
+  /** 多维星级：由分数/时间/道具使用/剩余点击综合计算 */
+  function computeStars(s: GameState): number {
+    return calcStarsMulti({
+      score: s.score,
+      timeLeft: s.timeLeft ?? 0,
+      propsUsed:
+        s.propsUsed.undo + s.propsUsed.shuffle + s.propsUsed.hint +
+        s.propsUsed.chisel + s.propsUsed.clearProp + s.propsUsed.pair + s.propsUsed.slot,
+      clickLeft: s.clickRemaining,
+      timeLimit: s.config.timeLimit ?? 0,
+      tileCount: s.config.tiles,
+      maxSlots: s.config.maxSlots
+    })
   }
 
   /**
@@ -695,18 +744,10 @@ export const useGameStore = defineStore('game', () => {
    * 多维星级 → rollCollection 抽稀有度+动物 → record 收藏 → 重复则转金币。
    * 结果写入 lastCollection 供局终弹窗展示；任何异常仅告警，不影响通关结算。
    */
-  async function handleCollectionDrop(s: GameState, score: number): Promise<void> {
+  async function handleCollectionDrop(s: GameState): Promise<void> {
     lastCollection.value = null
     try {
-      const stars = calcStarsMulti({
-        score,
-        timeLeft: s.timeLeft ?? 0,
-        propsUsed: s.propsUsed.undo + s.propsUsed.shuffle + s.propsUsed.hint,
-        clickLeft: s.clickRemaining,
-        timeLimit: s.config.timeLimit ?? 0,
-        tileCount: s.config.tiles,
-        maxSlots: s.config.maxSlots
-      })
+      const stars = computeStars(s)
       const chapter = CHAPTERS.find((c) => c.id === s.config.chapter)
       const chapterAnimals = chapter?.animals ?? []
       const { id, rarity } = rollCollection(chapterAnimals, stars)

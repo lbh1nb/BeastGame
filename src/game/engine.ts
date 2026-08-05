@@ -186,7 +186,7 @@ export class GameEngine {
       startTime: Date.now(),
       timeLeft: config.timeLimit,
       props: { ...DEFAULT_PROPS },
-      propsUsed: { undo: 0, shuffle: 0, hint: 0 },
+      propsUsed: { undo: 0, shuffle: 0, hint: 0, chisel: 0, clearProp: 0, pair: 0, slot: 0 },
       history: [],
       status: 'playing',
       hintTileIds: [],
@@ -441,6 +441,8 @@ export class GameEngine {
     if (state.props.chisel <= 0) return state
     const tile = state.tiles.find((t) => t.id === tileId)
     if (!tile || tile.removed || tile.inSlot) return state
+    // 拆牌锤只能拆当前可点击的牌
+    if (!canPick(state, tileId)) return state
     const next = cloneState(state)
     const t = next.tiles.find((x) => x.id === tileId)!
     t.removed = true
@@ -448,8 +450,14 @@ export class GameEngine {
     t.slotIndex = -1
     delete t.mechanicState
     next.props.chisel -= 1
+    next.propsUsed.chisel += 1
     next.lastMechanicEvents = []
     next.hintTileIds = []
+    // 拆掉最后一张牌即通关
+    if (next.tiles.every(t => t.removed)) {
+      next.status = 'won'
+      next.endTime = Date.now()
+    }
     return next
   }
 
@@ -467,6 +475,7 @@ export class GameEngine {
       }
     }
     next.props.clearProp -= 1
+    next.propsUsed.clearProp += 1
     next.lastMechanicEvents = []
     next.hintTileIds = []
     return next
@@ -491,8 +500,14 @@ export class GameEngine {
       }
     }
     next.props.pair -= 1
+    next.propsUsed.pair += 1
     next.lastMechanicEvents = []
     next.hintTileIds = []
+    // 一键配对消除最后两张牌即通关
+    if (next.tiles.every(t => t.removed)) {
+      next.status = 'won'
+      next.endTime = Date.now()
+    }
     return next
   }
 
@@ -505,6 +520,7 @@ export class GameEngine {
     next.maxSlots += 1
     next.slots.push({ index: next.slots.length, tile: null })
     next.props.slot -= 1
+    next.propsUsed.slot += 1
     next.lastMechanicEvents = []
     next.hintTileIds = []
     return next

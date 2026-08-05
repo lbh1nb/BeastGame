@@ -5,7 +5,7 @@ import { getDb, saveDb } from './index'
 // ============================================================================
 
 export interface GameRecordInput {
-  mode: 'classic3' | 'classic4' | 'level'
+  mode: 'classic3' | 'classic4' | 'level' | 'challenge'
   level_id?: number | null
   score: number
   duration: number

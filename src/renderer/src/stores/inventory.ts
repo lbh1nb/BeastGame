@@ -81,12 +81,23 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
+  /** 消耗一个新道具（扣减持久层与本地 state，非负保护；失败仅告警不抛错） */
+  async function consumeProp(prop: ShopProp): Promise<void> {
+    try {
+      await window.gameAPI.inventory.add(prop, -1)
+      props.value = { ...props.value, [prop]: Math.max(0, props.value[prop] - 1) }
+    } catch (e) {
+      console.warn(`[inventory] 消耗道具 ${prop} 失败`, e)
+    }
+  }
+
   return {
     coin,
     props,
     buying,
     load,
     buy,
-    spendCoin
+    spendCoin,
+    consumeProp
   }
 })
