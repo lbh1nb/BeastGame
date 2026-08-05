@@ -52,10 +52,8 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@components/common/BaseButton.vue'
-import { useInventoryStore } from '@stores/inventory'
+import { useInventoryStore, type ShopProp } from '@stores/inventory'
 import { NEW_PROP_PRICES, PROP_NAMES } from '@game/props.config'
-
-type ShopProp = 'chisel' | 'clearProp' | 'pair' | 'slot'
 
 const router = useRouter()
 const inventory = useInventoryStore()

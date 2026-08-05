@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { NEW_PROP_PRICES } from '@game/props.config'
 
 /** 商店可购买的新道具 key */
-type ShopProp = 'chisel' | 'clearProp' | 'pair' | 'slot'
+export type ShopProp = 'chisel' | 'clearProp' | 'pair' | 'slot'
 
 /**
  * 库存 Store（金币 + 商店新道具）
@@ -23,6 +23,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     pair: 0,
     slot: 0
   })
+  /** 购买流程锁：防止快速重复点击导致并发扣金币 */
+  const buying = ref(false)
 
   /** 从持久层加载全部库存 */
   async function load(): Promise<void> {
@@ -38,6 +40,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     } catch (e) {
       console.warn('[inventory] 加载库存失败', e)
       coin.value = 0
+      props.value = { chisel: 0, clearProp: 0, pair: 0, slot: 0 }
     }
   }
 
@@ -47,17 +50,21 @@ export const useInventoryStore = defineStore('inventory', () => {
    * - 成功：扣金币、加道具、更新本地 state，返回 true
    */
   async function buy(prop: ShopProp): Promise<boolean> {
+    if (buying.value) return false
     const price = NEW_PROP_PRICES[prop]
     if (coin.value < price) return false
+    buying.value = true
     try {
       await window.gameAPI.inventory.add('coin', -price)
       await window.gameAPI.inventory.add(prop, 1)
-      coin.value -= price
+      coin.value = Math.max(0, coin.value - price)
       props.value = { ...props.value, [prop]: props.value[prop] + 1 }
       return true
     } catch (e) {
       console.warn('[inventory] 购买失败', e)
       return false
+    } finally {
+      buying.value = false
     }
   }
 
@@ -77,6 +84,7 @@ export const useInventoryStore = defineStore('inventory', () => {
   return {
     coin,
     props,
+    buying,
     load,
     buy,
     spendCoin
