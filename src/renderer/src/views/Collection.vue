@@ -31,27 +31,11 @@
       </h2>
 
       <div class="chapter__grid">
-        <div
+        <CollectionCard
           v-for="a in chapter.animals"
           :key="a"
-          class="card"
-          :class="{ 'card--locked': !isObtained(a) }"
-        >
-          <div v-if="isObtained(a)" class="card__img">
-            <PixelAnimal :animal="a" :size="56" />
-          </div>
-          <div v-else class="card__img card__img--locked">?</div>
-
-          <span class="card__name">{{ ANIMAL_NAMES[a] }}</span>
-
-          <span
-            v-if="isObtained(a)"
-            class="card__badge"
-            :class="`card__badge--${rarityOf(a)}`"
-          >
-            {{ RARITY_NAME[rarityOf(a)] }}
-          </span>
-        </div>
+          :animal="a"
+        />
       </div>
     </div>
   </div>
@@ -65,10 +49,11 @@
  * - 已收集卡片显示动物形象（复用 PixelAnimal）+ 稀有度角标
  * - 未收集卡片显示灰色问号占位（剪影）
  */
-import { computed, onMounted } from 'vue'
+import { computed, defineComponent, h, onMounted, type PropType } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@components/common/BaseButton.vue'
 import PixelAnimal from '@components/game/PixelAnimal.vue'
+import type { AnimalType } from '@game/types'
 import { useCollectionStore, type CollectionItem } from '@stores/collection'
 import { CHAPTERS } from '@game/levels.config'
 import { RARITY_NAME, type Rarity } from '@game/collection'
@@ -103,8 +88,41 @@ function isObtained(animal: string): boolean {
 /** 某动物的稀有度（未收集时兜底 common） */
 function rarityOf(animal: string): Rarity {
   const r = itemMap.value.get(animal)?.rarity as Rarity | undefined
-  return r === 'common' || r === 'rare' || r === 'epic' || r === 'legendary' ? r : 'common'
+  return r && ['common', 'rare', 'epic', 'legendary'].includes(r) ? r : 'common'
 }
+
+/** 卡片子组件：内部计算一次 obtained/rarity，避免模板重复求值 */
+const CollectionCard = defineComponent({
+  name: 'CollectionCard',
+  props: {
+    animal: { type: String as PropType<AnimalType>, required: true },
+  },
+  setup(props) {
+    return () => {
+      const obtained = isObtained(props.animal)
+      const rarity = rarityOf(props.animal)
+      return h(
+        'div',
+        { class: ['card', { 'card--locked': !obtained }] },
+        [
+          obtained
+            ? h('div', { class: 'card__img' }, [
+                h(PixelAnimal, { animal: props.animal, size: 56 }),
+              ])
+            : h('div', { class: 'card__img card__img--locked' }, '?'),
+          h('span', { class: 'card__name' }, ANIMAL_NAMES[props.animal]),
+          obtained
+            ? h(
+                'span',
+                { class: ['card__badge', `card__badge--${rarity}`] },
+                RARITY_NAME[rarity]
+              )
+            : null,
+        ]
+      )
+    }
+  },
+})
 
 /** 某章已收集数量 */
 function obtainedInChapter(chapterId: number): number {
