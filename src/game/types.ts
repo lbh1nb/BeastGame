@@ -122,7 +122,7 @@ export interface LevelConfig {
   matchCount: number      // 3 或 4
   maxSlots: number       // 槽位数 7 或 8
   animals: AnimalType[]   // 本章可用动物
-  timeLimit?: number      // Boss关可能有时间限制（秒）
+  timeLimit?: number      // 闯关模式限时（秒），全员限时；经典模式无
   /** 多区域布局配置，不填时按旧逻辑单区域生成 */
   regions?: RegionConfig[]
   /** 章节机制配置 */
@@ -153,6 +153,8 @@ export interface GameState {
   tilesRemoved: number        // 累计消除图案数
   startTime: number
   endTime?: number
+  /** 当前剩余时间（秒），由外层驱动递减；无 timeLimit 时为 undefined */
+  timeLeft?: number
   props: GameProps
   propsUsed: { undo: number; shuffle: number; hint: number }
   history: HistoryEntry[]

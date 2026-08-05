@@ -29,8 +29,8 @@ export const CHAPTERS: Chapter[] = [
   { id: 6, name: '综合', animals: ['hippo', 'rhino', 'elephant', 'frog', 'seal', 'owl', 'goose', 'penguin', 'flamingo', 'ostrich'], theme: '#ECE0FF' }
 ]
 
-/** Boss 关时间限制（秒） */
-export const BOSS_TIME_LIMIT = 240
+/** 闯关每关限时（秒）：L1~L5(boss) */
+export const TIME_LIMITS = [540, 510, 480, 450, 420]
 
 /** 全屏单大堆网格配置 */
 const GRID_ROWS = 10
@@ -183,7 +183,7 @@ function buildLevelsFromSeed(seed: LevelSeed): LevelConfig[] {
       matchCount,
       maxSlots,
       animals,
-      ...(isBoss ? { timeLimit: BOSS_TIME_LIMIT } : {}),
+      timeLimit: TIME_LIMITS[i],
       ...(mechanic ? { mechanic } : {})
     })
   }

@@ -181,6 +181,7 @@ export class GameEngine {
       matchCount_total: 0,
       tilesRemoved: 0,
       startTime: Date.now(),
+      timeLeft: config.timeLimit,
       props: { ...DEFAULT_PROPS },
       propsUsed: { undo: 0, shuffle: 0, hint: 0 },
       history: [],
@@ -471,5 +472,20 @@ export class GameEngine {
   static getElapsedSeconds(state: GameState): number {
     const end = state.endTime ?? Date.now()
     return Math.max(0, Math.floor((end - state.startTime) / 1000))
+  }
+
+  /**
+   * 限时超时判定：若 config.timeLimit 存在且游戏仍在进行中，则判负。
+   * 调用方：外层定时器递减 timeLeft，当 timeLeft===0 时调用此方法。
+   * 返回克隆 state；已通关(won/lost)则保持不变。
+   */
+  static timeout(state: GameState): GameState {
+    if (!state.config.timeLimit) return state
+    if (state.status !== 'playing') return state
+    const next = cloneState(state)
+    next.timeLeft = 0
+    next.status = 'lost'
+    next.endTime = Date.now()
+    return next
   }
 }
