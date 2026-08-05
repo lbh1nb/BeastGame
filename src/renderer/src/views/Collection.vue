@@ -66,15 +66,6 @@
           :class="{ 'card--locked': !isObtained(a) }"
           @click="openDetail(a)"
         >
-          <!-- 稀有度角标 -->
-          <span
-            v-if="isObtained(a)"
-            class="card__badge"
-            :class="`card__badge--${rarityOf(a)}`"
-          >
-            {{ RARITY_NAME[rarityOf(a)] }}
-          </span>
-
           <!-- 相框：固定尺寸，物品尽量填满 -->
           <div class="card__frame">
             <template v-if="isObtained(a)">
@@ -87,7 +78,18 @@
             <span v-else class="card__question">?</span>
           </div>
 
-          <span class="card__name">{{ collectionItemOf(a).name }}</span>
+          <!-- 信息区：名称 + 稀有度（稀有度在展示框正下方，固定高度保证对齐） -->
+          <div class="card__info">
+            <span class="card__name">{{ collectionItemOf(a).name }}</span>
+            <span
+              v-if="isObtained(a)"
+              class="card__badge"
+              :class="`card__badge--${rarityOf(a)}`"
+            >
+              {{ RARITY_NAME[rarityOf(a)] }}
+            </span>
+            <span v-else class="card__badge card__badge--locked">未收集</span>
+          </div>
         </button>
       </div>
     </div>
@@ -459,9 +461,9 @@ function goHome(): void {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  height: 158px;
+  height: 164px;
   padding: 12px 8px 10px;
   box-sizing: border-box;
   background: linear-gradient(180deg, #ffffff 0%, #fff6e3 100%);
@@ -530,16 +532,39 @@ function goHome(): void {
   text-overflow: ellipsis;
 }
 
-/* 稀有度角标 */
+/* 信息区：名称 + 稀有度，固定高度保证卡片对齐一致 */
+.card__info {
+  flex: none;
+  width: 100%;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+}
+
+/* 名称：单行省略，不撑高卡片 */
+.card__name {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 稀有度标签：展示框正下方，普通流不裁剪，完整可见 */
 .card__badge {
-  position: absolute;
-  top: -8px;
-  right: -6px;
-  z-index: 2;
-  padding: 2px 8px;
+  flex: none;
+  display: inline-block;
+  padding: 1px 10px;
   border-radius: var(--radius-pill);
   font-size: 11px;
   font-weight: 800;
+  line-height: 1.4;
   color: #fff;
   box-shadow: var(--shadow-card);
 }
@@ -548,6 +573,7 @@ function goHome(): void {
 .card__badge--rare { background: #3b82f6; }
 .card__badge--epic { background: #8b5cf6; }
 .card__badge--legendary { background: #f59e0b; }
+.card__badge--locked { background: #c9c2b4; }
 
 /* 装饰气泡 */
 .bubble {
