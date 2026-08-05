@@ -139,9 +139,12 @@ export const useGameStore = defineStore('game', () => {
       // 立即初始化引擎（布局/绘图计算不依赖图片），但牌堆渲染由 resourcesReady 控制
       engineState.value = GameEngine.init(mode, levelConfig)
 
-      // 预加载本关用到的动物与机制图片（Promise 缓存去重后很快），就绪后再关闭"加载中"界面，
-      // 确保牌面图片已就绪、无空白、无逐张补绘卡顿
-      const animals: AnimalType[] = levelConfig?.animals ?? makeDefaultConfig(mode).animals
+      // 预加载本局用到的动物与机制图片（Promise 缓存去重后很快），就绪后再关闭"加载中"界面，
+      // 确保牌面图片已就绪、无空白、无逐张补绘卡顿。
+      // 优先取引擎实际生成的 config.animals（挑战模式为引擎内部随机的 6~8 种动物），
+      // 与场上牌面保持一致；init 失败时回退到关卡通配或默认配置。
+      const animals: AnimalType[] =
+        engineState.value?.config.animals ?? levelConfig?.animals ?? makeDefaultConfig(mode).animals
       try {
         await Promise.all([
           preloadAnimalImages(animals),
@@ -428,9 +431,6 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 收藏品掉落（仅闯关/挑战通关）：按星际概率掉收藏品，重复则转金币
-    // TODO(挑战模式随机配置生成)：挑战模式的 config 目前来自 makeDefaultConfig（chapter=0、无 timeLimit），
-    // 会导致 calcStars 返回 0、动物池为空、rollCollection 兜底掉落 sheep；
-    // 该逻辑依赖"挑战模式随机配置生成"（后续任务）落地后自动生效。
     if (result === 'win' && (s.mode === 'level' || s.mode === 'challenge')) {
       await handleCollectionDrop(s, score)
     }
