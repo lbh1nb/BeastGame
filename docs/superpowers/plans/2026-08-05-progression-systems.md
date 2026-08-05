@@ -425,7 +425,7 @@ git commit -m "feat: 收藏册视图"
 
 - [x] **Step 1: challenge.ts 生成随机 LevelConfig**
 
-`generateChallengeConfig(): LevelConfig`：随机选一章动物（子集 6-8 种）、随机 1-2 种机制（前 5 章）、`timeLimit` 取 240s（比闯关短）、`mode='challenge'`、`id=0`、`isBoss=false`。
+`generateChallengeConfig(): LevelConfig`：随机选一章动物（子集 6-8 种）、随机 1 种机制（前 5 章）、`timeLimit` 取 450s（7 分半）、`mode='challenge'`、`id=0`、`isBoss=false`。
 
 - [x] **Step 2: 引擎支持 challenge
 

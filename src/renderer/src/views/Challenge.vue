@@ -16,7 +16,7 @@
     <div class="challenge__card rules">
       <div class="rules__row"><span class="rules__icon">🎫</span>门票 <b>100 金币</b>，通关返还</div>
       <div class="rules__row"><span class="rules__icon">🎲</span>随机动物组合与随机机制</div>
-      <div class="rules__row"><span class="rules__icon">⏱️</span>限时 <b>240 秒</b>，超时失败</div>
+      <div class="rules__row"><span class="rules__icon">⏱️</span>限时 <b>450 秒</b>（7 分半），超时失败</div>
       <div class="rules__row"><span class="rules__icon">🎁</span>通关掉落收藏品 + 额外道具</div>
       <div class="rules__row"><span class="rules__icon">💔</span>挑战失败，门票不返还</div>
     </div>

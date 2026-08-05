@@ -33,6 +33,9 @@ const MECHANIC_ANIM_DURATION = {
 /** 待选目标道具（如拆牌锤需选择一张牌作为目标） */
 type PendingProp = 'chisel' | null
 
+/** 通关星级 → 奖励金币（1/2/3 星） */
+const STAR_COIN: Record<number, number> = { 1: 50, 2: 100, 3: 150 }
+
 /**
  * 当前局游戏状态 Store
  * - 持有引擎返回的 GameState
@@ -59,6 +62,10 @@ export const useGameStore = defineStore('game', () => {
   const hasEnded = ref(false)
   /** 本局获得的收藏品（通关/挑战掉落，局终弹窗展示用） */
   const lastCollection = ref<{ id: string; rarity: Rarity; isNew: boolean } | null>(null)
+  /** 本局星级（0~3，结算弹窗展示用） */
+  const lastStars = ref(0)
+  /** 本局通关金币总收入（星级奖励 + 收藏转金币 + 挑战返票，结算弹窗展示用） */
+  const lastCoinEarned = ref(0)
   /** 倒计时定时器（闯关限时用） */
   let countdownTimer: number | undefined
 
@@ -122,6 +129,8 @@ export const useGameStore = defineStore('game', () => {
     hasEnded.value = false
     finalScore.value = 0
     lastCollection.value = null
+    lastStars.value = 0
+    lastCoinEarned.value = 0
     selectedLevelId.value = levelId ?? null
     resourcesReady.value = false
     pendingProp.value = null
@@ -470,15 +479,30 @@ export const useGameStore = defineStore('game', () => {
       console.warn('[game] 道具奖励发放失败', e)
     }
 
-    // 收藏品掉落（仅闯关/挑战通关）：按星际概率掉收藏品，重复则转金币
+    // 通关金币结算：星级奖励 + 收藏转金币 + 挑战返票
+    let coinEarned = 0
     if (result === 'win' && (s.mode === 'level' || s.mode === 'challenge')) {
-      await handleCollectionDrop(s)
+      // 星级奖励金币（1/2/3 星 → 50/100/150）
+      const stars = computeStars(s)
+      lastStars.value = stars
+      const starCoin = STAR_COIN[stars] ?? 0
+      if (starCoin > 0) {
+        try {
+          await window.gameAPI.inventory.add('coin', starCoin)
+          coinEarned += starCoin
+        } catch (e) {
+          console.warn('[game] 星级金币奖励发放失败', e)
+        }
+      }
+      // 收藏品掉落（重复则转金币，返回转化金币数）
+      coinEarned += await handleCollectionDrop(s)
     }
 
     // 挑战模式通关结算：返还门票 100 金币 + 额外 1 个随机新道具；失败不返还
     if (result === 'win' && s.mode === 'challenge') {
       try {
         await window.gameAPI.inventory.add('coin', 100)
+        coinEarned += 100
         const extraProps: ShopProp[] = ['chisel', 'clearProp', 'pair', 'slot']
         const pick = extraProps[Math.floor(Math.random() * extraProps.length)]
         await window.gameAPI.inventory.add(pick, 1)
@@ -486,6 +510,8 @@ export const useGameStore = defineStore('game', () => {
         console.warn('[game] 挑战通关奖励发放失败', e)
       }
     }
+
+    lastCoinEarned.value = coinEarned
 
     // 刷新用户数据（最高分/进度/成就）
     const userStore = useUserStore()
@@ -510,6 +536,8 @@ export const useGameStore = defineStore('game', () => {
     hasEnded.value = false
     finalScore.value = 0
     lastCollection.value = null
+    lastStars.value = 0
+    lastCoinEarned.value = 0
     pendingProp.value = null
   }
 
@@ -742,24 +770,42 @@ export const useGameStore = defineStore('game', () => {
   /**
    * 收藏品掉落结算
    * 多维星级 → rollCollection 抽稀有度+动物 → record 收藏 → 重复则转金币。
-   * 结果写入 lastCollection 供局终弹窗展示；任何异常仅告警，不影响通关结算。
+   * 结果写入 lastCollection 供局终弹窗展示；返回重复收藏转化的金币数。
+   * 任何异常仅告警，不影响通关结算。
    */
-  async function handleCollectionDrop(s: GameState): Promise<void> {
+  async function handleCollectionDrop(s: GameState): Promise<number> {
     lastCollection.value = null
+    let coin = 0
     try {
       const stars = computeStars(s)
       const chapter = CHAPTERS.find((c) => c.id === s.config.chapter)
       const chapterAnimals = chapter?.animals ?? []
-      const { id, rarity } = rollCollection(chapterAnimals, stars)
+      // 查询已获得的收藏品 id 集合，优先从未获得的收藏品中掉落（避免重复刷已有品）
+      let obtainedSet = new Set<string>()
+      try {
+        const all = await window.gameAPI.collection.getAll()
+        for (const item of all) {
+          if (item && item.id != null && Number(item.obtained ?? 0) >= 1) {
+            obtainedSet.add(String(item.id))
+          }
+        }
+      } catch {
+        // 查询失败则退化为全量随机掉落
+      }
+      const missing = chapterAnimals.filter((a) => !obtainedSet.has(String(a)))
+      const dropPool = missing.length > 0 ? missing : chapterAnimals
+      const { id, rarity } = rollCollection(dropPool, stars)
       const isNew = (await window.gameAPI.collection.record(id, rarity)) === 'new'
       if (!isNew) {
         await window.gameAPI.inventory.add('coin', RARITY_GOLD[rarity])
+        coin = RARITY_GOLD[rarity]
       }
       lastCollection.value = { id, rarity, isNew }
     } catch (e) {
       console.warn('[game] 收藏品掉落失败', e)
       lastCollection.value = null
     }
+    return coin
   }
 
   return {
@@ -771,6 +817,8 @@ export const useGameStore = defineStore('game', () => {
     finalScore,
     hasEnded,
     lastCollection,
+    lastStars,
+    lastCoinEarned,
     comboPraise,
     pickedFlashIds,
     mechanicAnims,

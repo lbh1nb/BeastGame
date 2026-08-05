@@ -5,7 +5,7 @@
  * 设计要点：
  *  - 随机选一章动物子集（6~8 种），保证 ≥ matchCount 可配对
  *  - 随机选 1 种机制（前 5 章机制），ratio 0.25~0.35
- *  - 限时 240s（比闯关短），id=0、isBoss=false
+ *  - 限时 450s（7.5 分钟），id=0、isBoss=false
  */
 import type { AnimalType, LevelConfig, MechanicType } from './types'
 import { CHAPTERS } from './levels.config'
@@ -31,7 +31,7 @@ function randInt(min: number, max: number): number {
  * 生成随机挑战配置。
  *  - 随机选一章，取其动物子集 6~8 种
  *  - 随机 1 种机制，ratio 0.25~0.35；vine/bubble 附带点击限制
- *  - timeLimit=240、id=0、isBoss=false、matchCount=3、maxSlots=7
+ *  - timeLimit=450、id=0、isBoss=false、matchCount=3、maxSlots=7
  */
 export function generateChallengeConfig(): LevelConfig {
   const chapter = CHAPTERS[Math.floor(Math.random() * CHAPTERS.length)]
@@ -59,7 +59,7 @@ export function generateChallengeConfig(): LevelConfig {
     matchCount: 3,
     maxSlots: 7,
     animals,
-    timeLimit: 240,
+    timeLimit: 450,
     mechanic: {
       type: mechanicType,
       ratio,

@@ -89,24 +89,51 @@
       >
         <!-- 闯关模式：关卡信息 -->
         <div v-if="levelInfo" class="level-info">{{ levelInfo }}</div>
+
+        <!-- 星级展示（通关才有） -->
+        <div v-if="gameStore.isWon" class="stars">
+          <span
+            v-for="i in 3"
+            :key="i"
+            class="star"
+            :class="{ 'star--on': i <= gameStore.lastStars }"
+          >★</span>
+        </div>
+
         <div class="result-detail">
           <div class="result-row"><span>最终分数</span><b>{{ gameStore.finalScore }}</b></div>
           <div class="result-row"><span>最高连击</span><b>x{{ engineState.maxCombo }}</b></div>
           <div class="result-row"><span>用时</span><b>{{ formatTime(elapsed) }}</b></div>
           <div class="result-row"><span>消除图案</span><b>{{ engineState.tilesRemoved }}</b></div>
         </div>
-        <!-- 通关：收藏品掉落 -->
-        <div v-if="gameStore.isWon && gameStore.lastCollection" class="collection-drop">
-          <div class="collection-drop-title">🎁 获得收藏品</div>
-          <div class="collection-card">
-            <span class="collection-animal">{{ animalName(gameStore.lastCollection.id) }}</span>
-            <span class="collection-rarity" :class="'rarity-' + gameStore.lastCollection.rarity">
-              {{ RARITY_NAME[gameStore.lastCollection.rarity] }}
-            </span>
-            <span v-if="gameStore.lastCollection.isNew" class="collection-tag new">✨ 新收藏！</span>
-            <span v-else class="collection-tag dup">
-              重复收藏，+{{ RARITY_GOLD[gameStore.lastCollection.rarity] }}金币
-            </span>
+
+        <!-- 通关：收藏品掉落 + 金币奖励 -->
+        <div v-if="gameStore.isWon" class="reward">
+          <!-- 收藏品掉落（带掉落动画） -->
+          <div v-if="gameStore.lastCollection" class="collection-drop">
+            <div class="collection-drop-title">🎁 获得收藏品</div>
+            <div
+              class="collection-card"
+              :class="['drop-anim drop-anim--' + gameStore.lastCollection.rarity]"
+            >
+              <img
+                class="collection-item"
+                :src="itemImg(gameStore.lastCollection.id)"
+                :alt="itemName(gameStore.lastCollection.id)"
+              />
+              <div class="collection-item-name">{{ itemName(gameStore.lastCollection.id) }}</div>
+              <span class="collection-rarity" :class="'rarity-' + gameStore.lastCollection.rarity">
+                {{ RARITY_NAME[gameStore.lastCollection.rarity] }}
+              </span>
+              <span v-if="gameStore.lastCollection.isNew" class="collection-tag new">✨ 新收藏！</span>
+              <span v-else class="collection-tag dup">
+                重复收藏，+{{ RARITY_GOLD[gameStore.lastCollection.rarity] }}金币
+              </span>
+            </div>
+          </div>
+          <!-- 金币奖励明细 -->
+          <div v-if="gameStore.lastCoinEarned > 0" class="coin-reward">
+            🪙 本局获得金币 <b>+{{ gameStore.lastCoinEarned }}</b>
           </div>
         </div>
         <!-- 闯关模式：上下关导航 -->
@@ -160,7 +187,8 @@ import { useGameStore } from '@stores/game'
 import { useUserStore } from '@stores/user'
 import { getLevelById, CHAPTERS, getChapterMechanic } from '@game/levels.config'
 import { RARITY_NAME, RARITY_GOLD } from '@game/collection'
-import { ANIMAL_NAMES } from '@utils/pixel-animal'
+import { collectionItemOf } from '@game/collection-item'
+import { assetUrl } from '@utils/asset-url'
 import type { GameMode, AnimalType } from '@game/types'
 import GameHUD from '@components/game/GameHUD.vue'
 import GameTitle from '@components/game/GameTitle.vue'
@@ -361,9 +389,15 @@ function formatTime(sec: number): string {
   return `${m}:${s}`
 }
 
-/** 收藏品动物中文名（缺映射时回退为 id） */
-function animalName(id: string): string {
-  return ANIMAL_NAMES[id as keyof typeof ANIMAL_NAMES] ?? id
+/** 收藏品物品图片 URL（缺映射时回退为 id 兜底） */
+function itemImg(id: string): string {
+  const def = collectionItemOf(id as AnimalType)
+  return assetUrl(`collection/${def.img}`)
+}
+
+/** 收藏品物品中文名（缺映射时回退为 id） */
+function itemName(id: string): string {
+  return collectionItemOf(id as AnimalType).name
 }
 </script>
 
@@ -447,6 +481,33 @@ function animalName(id: string): string {
   min-width: 180px;
 }
 
+/* 星级展示 */
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+
+.star {
+  font-size: 34px;
+  color: #e3d6c0;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.star--on {
+  color: #ffb300;
+  filter: drop-shadow(0 2px 4px rgba(255, 179, 0, 0.5));
+  animation: star-pop 0.5s ease both;
+}
+
+@keyframes star-pop {
+  0% { transform: scale(0) rotate(-20deg); }
+  60% { transform: scale(1.3) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
 /* 结算明细 */
 .result-detail {
   display: flex;
@@ -464,9 +525,16 @@ function animalName(id: string): string {
   margin-bottom: 4px;
 }
 
+/* 通关奖励区 */
+.reward {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* 收藏品掉落 */
 .collection-drop {
-  margin: 10px 0 4px;
+  margin: 2px 0;
   text-align: center;
 }
 
@@ -478,22 +546,60 @@ function animalName(id: string): string {
 }
 
 .collection-card {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
   background: linear-gradient(135deg, #fff8e6, #fff0d0);
   border: 2px solid #f0d59a;
   border-radius: var(--radius-lg);
-  padding: 10px 16px;
+  padding: 16px 20px 12px;
   box-shadow: var(--shadow-card);
 }
 
-.collection-animal {
+.collection-item {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+}
+
+.collection-item-name {
   font-size: 16px;
   font-weight: 800;
   color: var(--color-primary-dark);
+}
+
+/* 掉落动画：下落 + 弹跳 + 稀有度光晕 */
+.drop-anim {
+  animation: drop-in 0.7s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.drop-anim::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  pointer-events: none;
+  animation: rarity-glow 1.6s ease-in-out infinite;
+}
+
+.drop-anim--common::before { box-shadow: 0 0 18px rgba(158, 158, 158, 0.55); }
+.drop-anim--rare::before { box-shadow: 0 0 22px rgba(66, 165, 245, 0.7); }
+.drop-anim--epic::before { box-shadow: 0 0 26px rgba(171, 71, 188, 0.75); }
+.drop-anim--legendary::before { box-shadow: 0 0 30px rgba(255, 130, 0, 0.85); }
+
+@keyframes drop-in {
+  0% { transform: translateY(-46px) scale(0.4); opacity: 0; }
+  55% { transform: translateY(6px) scale(1.08); opacity: 1; }
+  72% { transform: translateY(-4px) scale(0.98); }
+  88% { transform: translateY(2px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes rarity-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
 .collection-rarity {
@@ -516,6 +622,22 @@ function animalName(id: string): string {
 
 .collection-tag.new { color: #2e7d32; }
 .collection-tag.dup { color: #b26a00; }
+
+/* 金币奖励汇总 */
+.coin-reward {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7a4a00;
+  background: linear-gradient(135deg, #ffd76e, #ffb84d);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  box-shadow: 0 3px 0 #e09a2e;
+}
+
+.coin-reward b {
+  font-size: 16px;
+}
 
 .result-row {
   display: flex;

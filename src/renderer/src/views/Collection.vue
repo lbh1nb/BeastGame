@@ -13,14 +13,13 @@
     </div>
 
     <h1 class="collection__title">🎨 收藏册</h1>
-    <p class="collection__subtitle">集齐全部 56 只小动物，与它们成为伙伴吧！</p>
+    <p class="collection__subtitle">集齐全部 {{ TOTAL }} 件萌趣物品，点亮你的收藏册吧！</p>
 
     <!-- 按章分组 -->
     <div
       v-for="chapter in CHAPTERS"
       :key="chapter.id"
       class="chapter"
-      :style="{ '--chapter-theme': chapter.theme }"
     >
       <h2 class="chapter__name">
         <span class="chapter__badge">{{ chapter.id }}</span>
@@ -31,11 +30,35 @@
       </h2>
 
       <div class="chapter__grid">
-        <CollectionCard
+        <div
           v-for="a in chapter.animals"
           :key="a"
-          :animal="a"
-        />
+          class="card"
+          :class="{ 'card--locked': !isObtained(a) }"
+        >
+          <!-- 稀有度角标 -->
+          <span
+            v-if="isObtained(a)"
+            class="card__badge"
+            :class="`card__badge--${rarityOf(a)}`"
+          >
+            {{ RARITY_NAME[rarityOf(a)] }}
+          </span>
+
+          <!-- 展品框（固定尺寸，图片完美嵌入） -->
+          <div class="card__frame">
+            <template v-if="isObtained(a)">
+              <img
+                class="card__img"
+                :src="assetUrl(`collection/${collectionItemOf(a).img}`)"
+                :alt="collectionItemOf(a).name"
+              />
+            </template>
+            <span v-else class="card__question">?</span>
+          </div>
+
+          <span class="card__name">{{ collectionItemOf(a).name }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -45,19 +68,19 @@
 /**
  * 收藏册
  * - 顶部展示集齐进度 count/56 + 返回首页
- * - 按 6 章分组展示 56 件收藏品
- * - 已收集卡片显示动物形象（复用 PixelAnimal）+ 稀有度角标
- * - 未收集卡片显示灰色问号占位（剪影）
+ * - 按 6 章分组展示 56 件可爱收藏物品
+ * - 已收集卡片：固定展品框内展示物品图 + 稀有度角标
+ * - 未收集卡片：灰色问号占位
  */
-import { computed, defineComponent, h, onMounted, type PropType } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@components/common/BaseButton.vue'
-import PixelAnimal from '@components/game/PixelAnimal.vue'
 import type { AnimalType } from '@game/types'
 import { useCollectionStore, type CollectionItem } from '@stores/collection'
 import { CHAPTERS } from '@game/levels.config'
 import { RARITY_NAME, type Rarity } from '@game/collection'
-import { ANIMAL_NAMES } from '@utils/pixel-animal'
+import { collectionItemOf } from '@game/collection-item'
+import { assetUrl } from '@utils/asset-url'
 
 const router = useRouter()
 const collection = useCollectionStore()
@@ -90,39 +113,6 @@ function rarityOf(animal: string): Rarity {
   const r = itemMap.value.get(animal)?.rarity as Rarity | undefined
   return r && ['common', 'rare', 'epic', 'legendary'].includes(r) ? r : 'common'
 }
-
-/** 卡片子组件：内部计算一次 obtained/rarity，避免模板重复求值 */
-const CollectionCard = defineComponent({
-  name: 'CollectionCard',
-  props: {
-    animal: { type: String as PropType<AnimalType>, required: true },
-  },
-  setup(props) {
-    return () => {
-      const obtained = isObtained(props.animal)
-      const rarity = rarityOf(props.animal)
-      return h(
-        'div',
-        { class: ['card', { 'card--locked': !obtained }] },
-        [
-          obtained
-            ? h('div', { class: 'card__img' }, [
-                h(PixelAnimal, { animal: props.animal, size: 56 }),
-              ])
-            : h('div', { class: 'card__img card__img--locked' }, '?'),
-          h('span', { class: 'card__name' }, ANIMAL_NAMES[props.animal]),
-          obtained
-            ? h(
-                'span',
-                { class: ['card__badge', `card__badge--${rarity}`] },
-                RARITY_NAME[rarity]
-              )
-            : null,
-        ]
-      )
-    }
-  },
-})
 
 /** 某章已收集数量 */
 function obtainedInChapter(chapterId: number): number {
@@ -226,7 +216,7 @@ function goHome(): void {
   width: 100%;
   max-width: 860px;
   padding: 20px 24px;
-  background: var(--chapter-theme, #fff);
+  background: var(--color-bg-card);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
@@ -262,25 +252,30 @@ function goHome(): void {
   color: var(--color-text-light);
 }
 
+/* 网格：固定最小列宽，卡片尺寸统一 */
 .chapter__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 14px;
 }
 
-/* 卡片 */
+/* 卡片：固定宽高，内容不撑破 */
 .card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 12px 8px 10px;
+  width: 100%;
+  height: 148px;
+  padding: 10px 8px 8px;
+  box-sizing: border-box;
   background: var(--color-bg-card);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   transition: transform 0.12s ease;
+  overflow: hidden;
 }
 
 .card:hover {
@@ -292,26 +287,47 @@ function goHome(): void {
   opacity: 0.6;
 }
 
-.card__img {
-  width: 56px;
-  height: 56px;
+/* 展品框：固定尺寸，图片绝对嵌入不溢出 */
+.card__frame {
+  flex: none;
+  width: 76px;
+  height: 76px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(135deg, #fffdf7, #fff1d8);
+  border: 2px solid #ecd9b8;
+  border-radius: 15px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
-.card__img--locked {
+.card__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.card__question {
   font-size: 40px;
   font-weight: 900;
-  color: #bdbdbd;
-  background: #ececec;
-  border-radius: 12px;
+  color: #c9c2b4;
+  line-height: 1;
 }
 
+/* 名称：单行省略，不撑高卡片 */
 .card__name {
-  font-size: 13px;
+  width: 100%;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 稀有度角标 */
@@ -319,6 +335,7 @@ function goHome(): void {
   position: absolute;
   top: -8px;
   right: -6px;
+  z-index: 2;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   font-size: 11px;
