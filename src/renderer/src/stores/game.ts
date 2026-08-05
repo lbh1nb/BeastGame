@@ -49,6 +49,8 @@ export const useGameStore = defineStore('game', () => {
   const finalScore = ref(0)
   /** 本局是否已结算，防止 endGame 重复执行 */
   const hasEnded = ref(false)
+  /** 倒计时定时器（闯关限时用） */
+  let countdownTimer: number | undefined
 
   /** 连击夸赞弹幕状态 */
   const comboPraise = ref<{ visible: boolean; tier: ComboTier; combo: number }>({
@@ -106,6 +108,7 @@ export const useGameStore = defineStore('game', () => {
   async function startGame(mode: GameMode, levelId?: number): Promise<void> {
     clearPickedFlash()
     clearMechanicAnims()
+    clearCountdown()
     hasEnded.value = false
     finalScore.value = 0
     selectedLevelId.value = levelId ?? null
@@ -142,6 +145,9 @@ export const useGameStore = defineStore('game', () => {
       preloadMechanicVideos().catch((e) => {
         console.warn('[game] 预加载机制视频失败（不影响游戏运行）', e)
       })
+
+      // 闯关限时：启动倒计时驱动
+      startCountdown()
     } catch (e) {
       console.error('[game] 初始化游戏失败', e)
       engineState.value = null
@@ -339,6 +345,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** 退出：清空当前局状态 */
   function exitToHome(): void {
+    clearCountdown()
     clearPickedFlash()
     clearMechanicAnims()
     engineState.value = null
@@ -346,6 +353,44 @@ export const useGameStore = defineStore('game', () => {
     selectedLevelId.value = null
     hasEnded.value = false
     finalScore.value = 0
+  }
+
+  /** 清理倒计时定时器 */
+  function clearCountdown(): void {
+    if (countdownTimer) {
+      window.clearInterval(countdownTimer)
+      countdownTimer = undefined
+    }
+  }
+
+  /**
+   * 启动限时倒计时：每秒递减 engineState.timeLeft。
+   * 归零时调用 GameEngine.timeout 判负，并 endGame 结算。
+   */
+  function startCountdown(): void {
+    clearCountdown()
+    const s = engineState.value
+    if (!s || s.config.timeLimit == null) return
+    countdownTimer = window.setInterval(() => {
+      const cur = engineState.value
+      if (!cur || cur.status !== 'playing') {
+        clearCountdown()
+        return
+      }
+      const limit = cur.config.timeLimit ?? 0
+      const nextLeft = Math.max(0, (cur.timeLeft ?? limit) - 1)
+      if (nextLeft <= 0) {
+        clearCountdown()
+        const timedOut = GameEngine.timeout(cur)
+        applyState(timedOut)
+        endGame().catch((e) => {
+          console.warn('[game] 超时结算失败', e)
+        })
+      } else {
+        // 仅更新 timeLeft，浅拷贝触发响应式
+        engineState.value = { ...cur, timeLeft: nextLeft }
+      }
+    }, 1000)
   }
 
   // ===== 内部方法 =====

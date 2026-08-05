@@ -8,6 +8,8 @@
         :elapsed="elapsed"
         :mode="engineState.mode"
         :click-remaining="engineState.clickRemaining"
+        :time-left="engineState.timeLeft"
+        :time-limit="engineState.config?.timeLimit"
         @back="onBack"
         @restart="onRestart"
         @pause="togglePause"

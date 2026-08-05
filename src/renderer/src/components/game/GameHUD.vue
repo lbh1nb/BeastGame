@@ -12,6 +12,11 @@
         <span class="stat-label">🖱️ 点击数</span>
         <span class="stat-value clicks-value">{{ clickRemaining }}</span>
       </div>
+      <!-- 倒计时：仅限时模式显示，展示剩余时间 -->
+      <div v-if="timeLimit != null" class="stat" :class="timeClass">
+        <span class="stat-label">⏱️ 剩余</span>
+        <span class="stat-value time-value">{{ countdownText }}</span>
+      </div>
       <div class="stat" :class="comboClass">
         <span class="stat-label">连击</span>
         <span class="stat-value combo-value">x{{ combo }}</span>
@@ -46,10 +51,14 @@ interface Props {
   elapsed: number
   mode: GameMode
   clickRemaining?: number
+  timeLeft?: number
+  timeLimit?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  clickRemaining: -1
+  clickRemaining: -1,
+  timeLeft: undefined,
+  timeLimit: undefined
 })
 
 const emit = defineEmits<{
@@ -64,6 +73,22 @@ const timeText = computed(() => {
     .padStart(2, '0')
   const s = (props.elapsed % 60).toString().padStart(2, '0')
   return `${m}:${s}`
+})
+
+/** 倒计时文本（mm:ss），展示剩余时间 */
+const countdownText = computed(() => {
+  const t = props.timeLeft ?? props.timeLimit ?? 0
+  const m = Math.floor(t / 60).toString().padStart(2, '0')
+  const s = (t % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+})
+
+/** 倒计时颜色分级：<=30s 红色闪烁 */
+const timeClass = computed(() => {
+  const t = props.timeLeft ?? props.timeLimit ?? 0
+  if (t <= 30) return 'time--danger'
+  if (t <= 60) return 'time--warn'
+  return ''
 })
 
 /** 连击分级 class */
@@ -293,5 +318,21 @@ const clicksClass = computed(() => {
     transform: scale(1.2);
     text-shadow: 0 0 24px rgba(244, 67, 54, 1);
   }
+}
+
+/* ===== 倒计时颜色分级 ===== */
+.time-value {
+  font-size: 20px;
+  font-weight: 900;
+  transition: color 0.3s ease;
+}
+.time--warn .time-value {
+  color: #fb8c00;
+  text-shadow: 0 0 10px rgba(251, 140, 0, 0.5);
+}
+.time--danger .time-value {
+  color: #f44336;
+  text-shadow: 0 0 14px rgba(244, 67, 54, 0.7);
+  animation: clicks-pulse 0.6s ease-in-out infinite;
 }
 </style>
