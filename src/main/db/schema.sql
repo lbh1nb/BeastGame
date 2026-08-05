@@ -37,3 +37,17 @@ CREATE TABLE IF NOT EXISTS settings (
   key    TEXT PRIMARY KEY,
   value  TEXT
 );
+
+-- 玩家库存（金币 + 新道具数量）
+CREATE TABLE IF NOT EXISTS player_inventory (
+  key   TEXT PRIMARY KEY,
+  value INTEGER NOT NULL DEFAULT 0
+);
+
+-- 收藏品收集进度
+CREATE TABLE IF NOT EXISTS collection (
+  id       TEXT PRIMARY KEY,
+  rarity   TEXT NOT NULL,
+  count    INTEGER NOT NULL DEFAULT 0,
+  obtained INTEGER NOT NULL DEFAULT 0
+);

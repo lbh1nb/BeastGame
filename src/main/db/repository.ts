@@ -419,6 +419,89 @@ export function initDefaultSettings(): void {
   initTx()
 }
 
+// ============================================================================
+// 库存类（player_inventory）
+// ============================================================================
+
+/**
+ * 读取单个 key 的数量，不存在返回 0
+ */
+export function getInventory(key: string): number {
+  const db = getDb()
+  const stmt = db.prepare('SELECT value FROM player_inventory WHERE key = ?')
+  const row = stmt.get(key) as any
+  return row && row.value != null ? Number(row.value) : 0
+}
+
+/**
+ * 增减 delta（可为负），返回最新值；key 不存在则先置 0
+ */
+export function addInventory(key: string, delta: number): number {
+  const db = getDb()
+  db.prepare(
+    `INSERT INTO player_inventory (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = value + excluded.value`
+  ).run(key, delta)
+  saveDb()
+  return getInventory(key)
+}
+
+/**
+ * 读取全部库存，返回 Record<string, number>
+ */
+export function getAllInventory(): Record<string, number> {
+  const db = getDb()
+  const stmt = db.prepare('SELECT key, value FROM player_inventory')
+  const rows = stmt.all() as any[]
+  const result: Record<string, number> = {}
+  for (const row of rows) {
+    result[row.key] = Number(row.value)
+  }
+  return result
+}
+
+// ============================================================================
+// 收藏品类（collection）
+// ============================================================================
+
+/**
+ * 记录一次获得。id 已有则 count+1 并返回 'duplicate'；没有则插入 count=1,obtained=1 返回 'new'
+ */
+export function recordCollection(id: string, rarity: string): 'new' | 'duplicate' {
+  const db = getDb()
+  const findStmt = db.prepare('SELECT id FROM collection WHERE id = ?')
+  const exists = findStmt.get(id)
+  if (exists) {
+    db.prepare('UPDATE collection SET count = count + 1 WHERE id = ?').run(id)
+    saveDb()
+    return 'duplicate'
+  }
+  db.prepare(
+    'INSERT INTO collection (id, rarity, count, obtained) VALUES (?, ?, 1, 1)'
+  ).run(id, rarity)
+  saveDb()
+  return 'new'
+}
+
+/**
+ * 读取全部收藏品
+ */
+export function getAllCollection(): any[] {
+  const db = getDb()
+  const stmt = db.prepare('SELECT * FROM collection')
+  return stmt.all() as any[]
+}
+
+/**
+ * 已收集（obtained >= 1）的数量
+ */
+export function getCollectionCount(): number {
+  const db = getDb()
+  const stmt = db.prepare('SELECT COUNT(*) AS cnt FROM collection WHERE obtained >= 1')
+  const row = stmt.get() as any
+  return row && row.cnt != null ? Number(row.cnt) : 0
+}
+
 // ----------------------------------------------------------------------------
 // 内部工具
 // ----------------------------------------------------------------------------

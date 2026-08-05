@@ -38,6 +38,18 @@ interface GameAPI {
     resolve: (name: string) => Promise<string>
     getDataPath: () => Promise<string>
   }
+  /** 库存（金币 + 道具） */
+  inventory: {
+    getAll: () => Promise<Record<string, number>>
+    get: (key: string) => Promise<number>
+    add: (key: string, delta: number) => Promise<number>
+  }
+  /** 收藏品 */
+  collection: {
+    getAll: () => Promise<any[]>
+    record: (id: string, rarity: string) => Promise<'new' | 'duplicate'>
+    count: () => Promise<number>
+  }
 }
 
 interface Window {

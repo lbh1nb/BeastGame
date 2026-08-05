@@ -7,6 +7,8 @@ import { registerProgressIpc } from './ipc/progress'
 import { registerAchievementIpc } from './ipc/achievement'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerAssetIpc } from './ipc/asset'
+import { registerInventoryIpc } from './ipc/inventory'
+import { registerCollectionIpc } from './ipc/collection'
 
 // 注册自定义协议，使渲染进程可通过 fetch / <video> / <audio> 加载本地资源
 // 需在 app ready 之前调用 registerSchemesAsPrivileged
@@ -82,6 +84,8 @@ app.whenReady().then(async () => {
   registerAchievementIpc()
   registerSettingsIpc()
   registerAssetIpc()
+  registerInventoryIpc()
+  registerCollectionIpc()
 
   createWindow()
 

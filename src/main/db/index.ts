@@ -13,6 +13,50 @@ let sqlJs: SqlJsStatic | null = null
 let db: SqlJsDatabase | null = null
 let dbPath: string = ''
 
+// 建表 SQL（含全部 6 张表）
+// 新库首次创建时执行；已存在的旧库也会执行 CREATE TABLE IF NOT EXISTS 以补齐缺失的新表
+const CREATE_TABLES_SQL = `
+  CREATE TABLE IF NOT EXISTS game_records (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    mode        TEXT    NOT NULL,
+    level_id    INTEGER,
+    score       INTEGER NOT NULL DEFAULT 0,
+    duration    INTEGER NOT NULL DEFAULT 0,
+    max_combo   INTEGER NOT NULL DEFAULT 0,
+    props_used  TEXT    NOT NULL DEFAULT '[]',
+    result      TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS level_progress (
+    level_id       INTEGER PRIMARY KEY,
+    status         TEXT    NOT NULL DEFAULT 'locked',
+    stars          INTEGER NOT NULL DEFAULT 0,
+    best_score     INTEGER NOT NULL DEFAULT 0,
+    best_duration  INTEGER NOT NULL DEFAULT 0,
+    updated_at     INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS achievements (
+    id           TEXT    PRIMARY KEY,
+    unlocked     INTEGER NOT NULL DEFAULT 0,
+    unlocked_at  INTEGER,
+    progress     INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS settings (
+    key    TEXT PRIMARY KEY,
+    value  TEXT
+  );
+  CREATE TABLE IF NOT EXISTS player_inventory (
+    key   TEXT PRIMARY KEY,
+    value INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS collection (
+    id       TEXT PRIMARY KEY,
+    rarity   TEXT NOT NULL,
+    count    INTEGER NOT NULL DEFAULT 0,
+    obtained INTEGER NOT NULL DEFAULT 0
+  );
+`
+
 // 默认成就 ID 列表
 export const ACHIEVEMENT_IDS: string[] = [
   'first_clear', 'chapter1_clear', 'chapter2_clear', 'chapter3_clear',
@@ -235,40 +279,10 @@ export async function initDB(): Promise<void> {
     // 启用外键约束
     db.run('PRAGMA foreign_keys = ON')
 
-    if (isNewDb) {
-      // 建表
-      dbWrapper.exec(`
-        CREATE TABLE IF NOT EXISTS game_records (
-          id          INTEGER PRIMARY KEY AUTOINCREMENT,
-          mode        TEXT    NOT NULL,
-          level_id    INTEGER,
-          score       INTEGER NOT NULL DEFAULT 0,
-          duration    INTEGER NOT NULL DEFAULT 0,
-          max_combo   INTEGER NOT NULL DEFAULT 0,
-          props_used  TEXT    NOT NULL DEFAULT '[]',
-          result      TEXT    NOT NULL,
-          created_at  INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS level_progress (
-          level_id       INTEGER PRIMARY KEY,
-          status         TEXT    NOT NULL DEFAULT 'locked',
-          stars          INTEGER NOT NULL DEFAULT 0,
-          best_score     INTEGER NOT NULL DEFAULT 0,
-          best_duration  INTEGER NOT NULL DEFAULT 0,
-          updated_at     INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS achievements (
-          id           TEXT    PRIMARY KEY,
-          unlocked     INTEGER NOT NULL DEFAULT 0,
-          unlocked_at  INTEGER,
-          progress     INTEGER NOT NULL DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS settings (
-          key    TEXT PRIMARY KEY,
-          value  TEXT
-        );
-      `)
+    // 建表（新库与旧库都执行，CREATE TABLE IF NOT EXISTS 保证旧库补齐新表而不影响已有数据）
+    dbWrapper.exec(CREATE_TABLES_SQL)
 
+    if (isNewDb) {
       initDefaultSettings()
       initLevelProgress()
       initAchievements(ACHIEVEMENT_IDS)

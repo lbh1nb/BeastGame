@@ -41,6 +41,20 @@ const gameAPI = {
   asset: {
     resolve: (name: string) => ipcRenderer.invoke('asset:resolve', name),
     getDataPath: () => ipcRenderer.invoke('asset:getDataPath')
+  },
+
+  // 库存（金币 + 道具）
+  inventory: {
+    getAll: () => ipcRenderer.invoke('inventory:getAll'),
+    get: (key: string) => ipcRenderer.invoke('inventory:get', key),
+    add: (key: string, delta: number) => ipcRenderer.invoke('inventory:add', key, delta)
+  },
+
+  // 收藏品
+  collection: {
+    getAll: () => ipcRenderer.invoke('collection:getAll'),
+    record: (id: string, rarity: string) => ipcRenderer.invoke('collection:record', id, rarity),
+    count: () => ipcRenderer.invoke('collection:count')
   }
 }
 
