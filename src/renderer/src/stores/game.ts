@@ -170,12 +170,6 @@ export const useGameStore = defineStore('game', () => {
     const s = engineState.value
     if (!s || s.status !== 'playing') return
 
-    // 待选目标道具：处于拆牌锤选择态时，点击牌即执行拆牌，不走普通点击逻辑
-    if (pendingProp.value === 'chisel') {
-      await useChisel(tileId)
-      return
-    }
-
     const prevMatchTotal = s.matchCount_total
     const prevCombo = s.combo
 
@@ -247,6 +241,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** 使用撤回道具 */
   async function useUndo(): Promise<void> {
+    cancelPendingProp()
     const s = engineState.value
     if (!s || !canUndo.value) return
     try {
@@ -260,6 +255,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** 使用洗牌道具 */
   async function useShuffle(): Promise<void> {
+    cancelPendingProp()
     const s = engineState.value
     if (!s || !canShuffle.value) return
     try {
@@ -273,6 +269,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** 使用提示道具 */
   async function useHint(): Promise<void> {
+    cancelPendingProp()
     const s = engineState.value
     if (!s || !canHint.value) return
     try {
@@ -299,8 +296,15 @@ export const useGameStore = defineStore('game', () => {
     }
     try {
       const next = GameEngine.useChisel(s, tileId)
+      // 无效牌（已移除/槽内）时引擎返回原 state 引用，保持选择态让玩家重选
+      if (next === s) return
       pendingProp.value = null
       applyState(next)
+      // 拆掉场上最后一张牌时触发胜利结算（引擎只置 removed，不重算 status）
+      if (next.tiles.every((t) => t.removed)) {
+        await endGame()
+        return
+      }
       if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
     } catch (e) {
       console.error('[game] 拆牌锤失败', e)
@@ -309,6 +313,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** 使用槽位清空道具 */
   async function useClearProp(): Promise<void> {
+    cancelPendingProp()
     const s = engineState.value
     if (!s || s.status !== 'playing' || s.props.clearProp <= 0) return
     try {
@@ -322,11 +327,17 @@ export const useGameStore = defineStore('game', () => {
 
   /** 使用一键配对道具 */
   async function usePair(): Promise<void> {
+    cancelPendingProp()
     const s = engineState.value
     if (!s || s.status !== 'playing' || s.props.pair <= 0) return
     try {
       const next = GameEngine.usePair(s)
       applyState(next)
+      // 一键配对消除最后两张牌时触发胜利结算（引擎只置 removed，不重算 status）
+      if (next.tiles.every((t) => t.removed)) {
+        await endGame()
+        return
+      }
       if (soundEnabled.value) audioManager.playSfx('prop_shuffle')
     } catch (e) {
       console.error('[game] 一键配对失败', e)
@@ -335,6 +346,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** 使用临时扩容道具 */
   async function useSlot(): Promise<void> {
+    cancelPendingProp()
     const s = engineState.value
     if (!s || s.status !== 'playing' || s.props.slot <= 0) return
     try {
