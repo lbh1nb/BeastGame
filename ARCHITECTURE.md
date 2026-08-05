@@ -408,7 +408,8 @@ flowchart LR
 - **4 种金币新道具**：拆牌锤 `chisel`（移除1张可点击牌）、槽位清空 `clearProp`（槽位牌回牌堆）、一键配对 `pair`（消除一对同动物）、临时扩容 `slot`（+1卡槽）。**不进入** history 撤回序列，仅在闯关/挑战模式可用。
 - 新道具库存持久化于 `player_inventory` 表；对局开始注入引擎 `props`，使用时同步扣减持久库存。
 - **多维星级**：`src/game/stars.ts` 的 `calcStars` 由分数主导乘数式计算（`score×tileCount×12` 归一化，`0.85/0.6/0.3 → 3/2/1 星`），`updateLevelProgress` 与收藏掉落共用同一星级。
-- **收藏品**：`src/game/collection.ts` 的 `rollCollection` 按星级概率抽稀有度，从当前章动物中随机选一只；重复品自动转金币（普通80/稀有200/史诗400/传说800）。
+- **收藏品**：`src/game/collection.ts` 的 `rollCollection` 按星级概率抽稀有度，从当前章动物中随机选一只；重复品自动转金币（普通80/稀有200/史诗400/传说800）。动物→物品映射与文字描述在 `src/game/collection-item.ts`（`COLLECTION_ITEMS`，含 `name/img/desc`），物品图由 work 端生成于 `resources/collection/{animal}_item.png`。
+- **收藏册视图**：`src/renderer/src/views/Collection.vue` 为相册风格（Q萌暖色，与加载/主页一致），按 6 章分组展示，章节头带代表性小动物头像与装饰；物品图片尽量填满相框；点击任意收藏品弹出 `Dialog` 详情（大图 + 名称 + 稀有度 + `<desc>` 描述 + 收集状态）。
 - **挑战模式**：`src/game/challenge.ts` 的 `generateChallengeConfig` 随机生成动物+机制+限时的 LevelConfig；`mode='challenge'`，金币门票 100，通关返门票。
 - **全员限时**：闯关每关 `timeLimit`（L1=540s … L5/Boss=420s），引擎 `timeout` 超时判负；渲染层每秒递减 `timeLeft` 驱动倒计时。
 
